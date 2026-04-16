@@ -71,11 +71,37 @@ export default function Dashboard({ data, onUpdate }: { data: RestaurantData, on
   const [selectedTargetCategory, setSelectedTargetCategory] = useState(data.sections[0]?.title || '');
   const [imagePreview, setImagePreview] = useState<string | null>(null);
 
-  const fileToBase64 = (file: File): Promise<string> => {
+  const fileToBase64 = (file: File, maxWidth = 800, maxHeight = 800): Promise<string> => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.readAsDataURL(file);
-      reader.onload = () => resolve(reader.result as string);
+      reader.onload = (event) => {
+        const img = new Image();
+        img.src = event.target?.result as string;
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          let width = img.width;
+          let height = img.height;
+
+          if (width > height) {
+            if (width > maxWidth) {
+              height *= maxWidth / width;
+              width = maxWidth;
+            }
+          } else {
+            if (height > maxHeight) {
+              width *= maxHeight / height;
+              height = maxHeight;
+            }
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx?.drawImage(img, 0, 0, width, height);
+          resolve(canvas.toDataURL('image/jpeg', 0.8));
+        };
+      };
       reader.onerror = error => reject(error);
     });
   };
@@ -83,12 +109,28 @@ export default function Dashboard({ data, onUpdate }: { data: RestaurantData, on
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const base64 = await fileToBase64(file);
-      setImagePreview(base64);
-      // Reset input value so same file can be selected again
-      e.target.value = '';
+      try {
+        const base64 = await fileToBase64(file);
+        setImagePreview(base64);
+        e.target.value = '';
+      } catch (err) {
+        alert("Fout bij het verwerken van de afbeelding. Probeer een kleiner bestand.");
+      }
     }
   };
+
+  const [showStockGallery, setShowStockGallery] = useState(false);
+  const stockImages = [
+    { url: "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&q=80&w=800", label: "Gezond" },
+    { url: "https://images.unsplash.com/photo-1567620905732-2d1ec7bb7445?auto=format&fit=crop&q=80&w=800", label: "Pancakes" },
+    { url: "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&q=80&w=800", label: "Pizza" },
+    { url: "https://images.unsplash.com/photo-1482049016688-2d3e1b311543?auto=format&fit=crop&q=80&w=800", label: "Pasta" },
+    { url: "https://images.unsplash.com/photo-1555939594-58d7cb561ad1?auto=format&fit=crop&q=80&w=800", label: "BBQ" },
+    { url: "https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?auto=format&fit=crop&q=80&w=800", label: "Salade" },
+    { url: "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&q=80&w=800", label: "Vegan" },
+    { url: "https://images.unsplash.com/photo-1476224203421-9ac39bcb3327?auto=format&fit=crop&q=80&w=800", label: "Burger" },
+    { url: "https://images.unsplash.com/photo-1467003909585-2f8a72700288?auto=format&fit=crop&q=80&w=800", label: "Zalm" },
+  ];
 
   const [deleteConfirmation, setDeleteConfirmation] = useState<{
     type: 'product' | 'category';
@@ -583,10 +625,10 @@ export default function Dashboard({ data, onUpdate }: { data: RestaurantData, on
                     <tr key={item.id} className="hover:bg-white/[0.02] transition-colors group">
                       <td className="px-8 py-4">
                         <div className="flex items-center gap-4">
-                          <img src={item.image} className="w-12 h-12 rounded-xl object-cover" referrerPolicy="no-referrer" />
+                          <img src={item.image} className="w-24 h-24 rounded-2xl object-cover border border-white/5" referrerPolicy="no-referrer" />
                           <div>
-                            <p className="font-medium">{item.name}</p>
-                            <p className="text-xs text-white/40 line-clamp-1">{item.description}</p>
+                            <p className="font-medium text-lg">{item.name}</p>
+                            <p className="text-xs text-white/40 line-clamp-2 max-w-sm">{item.description}</p>
                           </div>
                         </div>
                       </td>
@@ -1179,22 +1221,35 @@ export default function Dashboard({ data, onUpdate }: { data: RestaurantData, on
               </h3>
               <form onSubmit={handleSaveProduct} className="space-y-4">
                 <div className="flex gap-6 mb-6">
-                  <div className="w-32 h-32 rounded-2xl bg-white/5 border border-white/10 overflow-hidden flex items-center justify-center relative group">
-                    {(imagePreview || editingProduct?.item.image) ? (
-                      <img src={imagePreview || editingProduct?.item.image} className="w-full h-full object-cover" />
-                    ) : (
-                      <Upload className="w-8 h-8 text-white/20" />
-                    )}
-                    <input 
-                      type="file" 
-                      accept="image/*" 
-                      onChange={handleFileChange}
-                      className="absolute inset-0 opacity-0 cursor-pointer z-10" 
-                    />
-                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity pointer-events-none">
-                      <p className="text-[10px] font-bold uppercase tracking-widest">Wijzig</p>
-                    </div>
-                  </div>
+                      <div>
+                        <label className="text-xs text-white/40 uppercase tracking-widest mb-2 block">Afbeelding</label>
+                        <div className="flex gap-4">
+                          <div className="w-24 h-24 rounded-2xl bg-white/5 border border-white/10 overflow-hidden flex items-center justify-center relative group">
+                            {(imagePreview || editingProduct?.item.image) ? (
+                              <img src={imagePreview || editingProduct?.item.image} className="w-full h-full object-cover" />
+                            ) : (
+                              <Upload className="w-8 h-8 text-white/20" />
+                            )}
+                            <input 
+                              type="file" 
+                              accept="image/*" 
+                              onChange={handleFileChange}
+                              className="absolute inset-0 opacity-0 cursor-pointer z-10" 
+                            />
+                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity pointer-events-none">
+                              <p className="text-[10px] font-bold uppercase tracking-widest text-center">Upload</p>
+                            </div>
+                          </div>
+                          <button 
+                            type="button"
+                            onClick={() => setShowStockGallery(true)}
+                            className="flex-1 bg-white/5 border border-white/10 rounded-2xl flex flex-col items-center justify-center gap-2 hover:bg-white/10 transition-all border-dashed"
+                          >
+                            <Grid2X2 className="w-6 h-6 text-brand-gold" />
+                            <span className="text-[10px] font-bold uppercase tracking-widest">Kies uit map</span>
+                          </button>
+                        </div>
+                      </div>
                   <div className="flex-1 space-y-4">
                     <div>
                       <label className="text-xs text-white/40 uppercase tracking-widest mb-2 block">Categorie</label>
@@ -1258,32 +1313,92 @@ export default function Dashboard({ data, onUpdate }: { data: RestaurantData, on
               </h3>
               <form onSubmit={handleSaveCategory} className="space-y-4">
                 <div className="flex items-center gap-6 mb-6">
-                  <div className="w-24 h-24 rounded-2xl bg-white/5 border border-white/10 overflow-hidden flex items-center justify-center relative group">
-                    {(imagePreview || editingCategory?.items[0]?.image) ? (
-                      <img src={imagePreview || editingCategory?.items[0]?.image} className="w-full h-full object-cover" />
-                    ) : (
-                      <Upload className="w-6 h-6 text-white/20" />
-                    )}
-                    <input 
-                      type="file" 
-                      accept="image/*" 
-                      onChange={handleFileChange}
-                      className="absolute inset-0 opacity-0 cursor-pointer z-10" 
-                    />
-                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity pointer-events-none">
-                      <p className="text-[10px] font-bold uppercase tracking-widest">Wijzig</p>
+                  <div className="flex-col flex gap-2 w-24">
+                    <label className="text-xs text-white/40 uppercase tracking-widest block">Afbeelding</label>
+                    <div className="w-24 h-24 rounded-2xl bg-white/5 border border-white/10 overflow-hidden flex items-center justify-center relative group">
+                      {(imagePreview || editingCategory?.items[0]?.image) ? (
+                        <img src={imagePreview || editingCategory?.items[0]?.image} className="w-full h-full object-cover" />
+                      ) : (
+                        <Upload className="w-6 h-6 text-white/20" />
+                      )}
+                      <input 
+                        type="file" 
+                        accept="image/*" 
+                        onChange={handleFileChange}
+                        className="absolute inset-0 opacity-0 cursor-pointer z-10" 
+                      />
+                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity pointer-events-none">
+                        <p className="text-[10px] font-bold uppercase tracking-widest">Upload</p>
+                      </div>
                     </div>
                   </div>
-                  <div className="flex-1">
-                    <label className="text-xs text-white/40 uppercase tracking-widest mb-2 block">Titel</label>
-                    <input name="title" defaultValue={editingCategory?.title} required className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 focus:border-brand-gold outline-none transition-colors" />
+                  <div className="flex-1 flex flex-col gap-2">
+                    <label className="text-xs text-white/40 uppercase tracking-widest block">Of kies map</label>
+                    <button 
+                      type="button"
+                      onClick={() => setShowStockGallery(true)}
+                      className="w-full h-24 bg-white/5 border border-white/10 rounded-2xl flex flex-col items-center justify-center gap-2 hover:bg-white/10 transition-all border-dashed"
+                    >
+                      <Grid2X2 className="w-6 h-6 text-brand-gold" />
+                      <span className="text-[10px] font-bold uppercase tracking-widest">Galerij</span>
+                    </button>
                   </div>
+                </div>
+                <div>
+                  <label className="text-xs text-white/40 uppercase tracking-widest mb-2 block">Titel van de Categorie</label>
+                  <input name="title" defaultValue={editingCategory?.title} required placeholder="bijv. Hoofdgerechten" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 focus:border-brand-gold outline-none transition-colors" />
                 </div>
                 <div className="flex gap-4 pt-4">
                   <button type="button" onClick={() => { setEditingCategory(null); setIsAddingCategory(false); setImagePreview(null); }} className="flex-1 py-4 rounded-xl border border-white/10 hover:bg-white/5 transition-colors">Annuleren</button>
                   <button type="submit" className="flex-1 py-4 rounded-xl bg-brand-gold text-brand-dark font-bold hover:scale-105 transition-transform">Opslaan</button>
                 </div>
               </form>
+            </motion.div>
+          </div>
+        )}
+
+        {showStockGallery && (
+          <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/95 backdrop-blur-xl">
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-[#1A1A1A] border border-white/10 rounded-[3rem] p-10 w-full max-w-4xl"
+            >
+              <div className="flex justify-between items-center mb-8">
+                <div>
+                  <h3 className="text-3xl font-serif italic text-brand-gold">Fotogalerij</h3>
+                  <p className="text-white/40 text-sm">Kies een professionele sfeerfoto uit de map</p>
+                </div>
+                <button onClick={() => setShowStockGallery(false)} className="p-4 hover:bg-white/5 rounded-full transition-colors">
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-6 max-h-[60vh] overflow-y-auto pr-4 custom-scrollbar">
+                {stockImages.map((img, i) => (
+                  <div 
+                    key={i}
+                    onClick={() => {
+                      setImagePreview(img.url);
+                      setShowStockGallery(false);
+                    }}
+                    className="relative aspect-video rounded-2xl overflow-hidden cursor-pointer group border-2 border-transparent hover:border-brand-gold transition-all"
+                  >
+                    <img src={img.url} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                    <div className="absolute inset-0 bg-black/40 group-hover:bg-black/20 transition-colors" />
+                    <div className="absolute bottom-4 left-4">
+                      <p className="text-xs font-bold uppercase tracking-widest bg-brand-gold text-brand-dark px-3 py-1 rounded-full">{img.label}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-8 flex justify-end">
+                <button 
+                  onClick={() => setShowStockGallery(false)}
+                  className="px-8 py-4 rounded-xl bg-white/5 hover:bg-white/10 transition-colors font-bold"
+                >
+                  Sluiten
+                </button>
+              </div>
             </motion.div>
           </div>
         )}
