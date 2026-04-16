@@ -15,10 +15,11 @@ import {
   Download,
   Play,
   X,
-  TrendingUp
+  TrendingUp,
+  Upload
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { RESTAURANT_DATA } from '../constants';
+import { RestaurantData, MenuItem, MenuSection } from '../types';
 
 interface StatCardProps {
   icon: React.ReactNode;
@@ -55,11 +56,43 @@ const ActionCard = ({ icon, title, description }: ActionCardProps) => (
   </div>
 );
 
-export default function Dashboard() {
+export default function Dashboard({ data, onUpdate }: { data: RestaurantData, onUpdate: (data: RestaurantData) => void }) {
   const [activeTab, setActiveTab] = useState('Dashboard');
   const [selectedVideoItems, setSelectedVideoItems] = useState<string[]>([]);
   const [videoMode, setVideoMode] = useState<'single' | 'category' | 'custom'>('single');
-  const [selectedCategory, setSelectedCategory] = useState(RESTAURANT_DATA.sections[0].title);
+  const [selectedCategory, setSelectedCategory] = useState(data.sections[0]?.title || '');
+
+  const [editingProduct, setEditingProduct] = useState<{ item: MenuItem, sectionTitle: string } | null>(null);
+  const [editingCategory, setEditingCategory] = useState<MenuSection | null>(null);
+  const [isAddingProduct, setIsAddingProduct] = useState(false);
+  const [isAddingCategory, setIsAddingCategory] = useState(false);
+  const [selectedTargetCategory, setSelectedTargetCategory] = useState(data.sections[0]?.title || '');
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+
+  const fileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = error => reject(error);
+    });
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const base64 = await fileToBase64(file);
+      setImagePreview(base64);
+      // Reset input value so same file can be selected again
+      e.target.value = '';
+    }
+  };
+
+  const [deleteConfirmation, setDeleteConfirmation] = useState<{
+    type: 'product' | 'category';
+    sectionTitle: string;
+    productId?: string;
+  } | null>(null);
 
   const navItems = [
     { name: 'Dashboard', icon: <LayoutDashboard className="w-5 h-5" /> },
@@ -83,17 +116,146 @@ export default function Dashboard() {
   const videoRef = React.useRef<HTMLVideoElement>(null);
 
   const getSelectedItems = () => {
-    const allItems = RESTAURANT_DATA.sections.flatMap(s => s.items);
+    const allItems = data.sections.flatMap(s => s.items);
     if (videoMode === 'single') {
       return allItems.filter(i => selectedVideoItems.includes(i.id));
     }
     if (videoMode === 'category') {
-      return RESTAURANT_DATA.sections.find(s => s.title === selectedCategory)?.items || [];
+      return data.sections.find(s => s.title === selectedCategory)?.items || [];
     }
     return allItems.filter(i => selectedVideoItems.includes(i.id));
   };
 
   const selectedItemsForVideo = getSelectedItems();
+
+  const handleDeleteProduct = (sectionTitle: string, productId: string) => {
+    setDeleteConfirmation({ type: 'product', sectionTitle, productId });
+  };
+
+  const handleDeleteCategory = (sectionTitle: string) => {
+    setDeleteConfirmation({ type: 'category', sectionTitle });
+  };
+
+  const confirmDelete = () => {
+    if (!deleteConfirmation) return;
+
+    const newData = { ...data };
+    if (deleteConfirmation.type === 'product') {
+      const section = newData.sections.find(s => s.title === deleteConfirmation.sectionTitle);
+      if (section) {
+        section.items = section.items.filter(i => i.id !== deleteConfirmation.productId);
+      }
+    } else {
+      newData.sections = newData.sections.filter(s => s.title !== deleteConfirmation.sectionTitle);
+      if (selectedCategory === deleteConfirmation.sectionTitle) {
+        setSelectedCategory(newData.sections[0]?.title || '');
+      }
+    }
+    onUpdate(newData);
+    setDeleteConfirmation(null);
+  };
+
+  const handleSaveProduct = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    const name = formData.get('name') as string;
+    const price = parseFloat(formData.get('price') as string);
+    const description = formData.get('description') as string;
+    const fileImage = (e.currentTarget.querySelector('input[type="file"]') as HTMLInputElement)?.files?.[0];
+    const targetCategory = formData.get('category') as string;
+
+    let image = editingProduct?.item.image || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&q=80&w=800';
+    if (fileImage) {
+      image = await fileToBase64(fileImage);
+    } else if (imagePreview) {
+      image = imagePreview;
+    }
+
+    const newData = { ...data };
+    if (editingProduct) {
+      // Als de categorie is gewijzigd, verplaats het product
+      if (editingProduct.sectionTitle !== targetCategory) {
+        const oldSection = newData.sections.find(s => s.title === editingProduct.sectionTitle);
+        const newSection = newData.sections.find(s => s.title === targetCategory);
+        if (oldSection && newSection) {
+          oldSection.items = oldSection.items.filter(i => i.id !== editingProduct.item.id);
+          newSection.items.push({
+            ...editingProduct.item,
+            name, price, description, image
+          });
+        }
+      } else {
+        const section = newData.sections.find(s => s.title === editingProduct.sectionTitle);
+        if (section) {
+          const item = section.items.find(i => i.id === editingProduct.item.id);
+          if (item) {
+            item.name = name;
+            item.price = price;
+            item.description = description;
+            item.image = image;
+          }
+        }
+      }
+      setEditingProduct(null);
+    } else if (isAddingProduct) {
+      const section = newData.sections.find(s => s.title === targetCategory);
+      if (section) {
+        section.items.push({
+          id: Math.random().toString(36).substr(2, 9),
+          name,
+          price,
+          description,
+          image,
+          tags: []
+        });
+      }
+      setIsAddingProduct(false);
+    }
+    onUpdate(newData);
+    setImagePreview(null);
+  };
+
+  const handleSaveCategory = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    const title = formData.get('title') as string;
+    const fileImage = (e.currentTarget.querySelector('input[type="file"]') as HTMLInputElement)?.files?.[0];
+
+    let image = '';
+    if (fileImage) {
+      image = await fileToBase64(fileImage);
+    } else if (imagePreview) {
+      image = imagePreview;
+    }
+
+    const newData = { ...data };
+    if (editingCategory) {
+      const section = newData.sections.find(s => s.title === editingCategory.title);
+      if (section) {
+        section.title = title;
+        // Als er een nieuwe afbeelding is geüpload, update de eerste item afbeelding (als placeholder voor de categorie)
+        if (image && section.items.length > 0) {
+          section.items[0].image = image;
+        }
+      }
+      setEditingCategory(null);
+    } else if (isAddingCategory) {
+      newData.sections.push({
+        title,
+        items: image ? [{
+          id: 'placeholder',
+          name: 'Eerste Product',
+          description: 'Voeg je eerste product toe',
+          price: 0,
+          image: image,
+          tags: []
+        }] : []
+      });
+      setIsAddingCategory(false);
+    }
+    onUpdate(newData);
+    setImagePreview(null);
+  };
 
   React.useEffect(() => {
     if (videoGenerated && selectedItemsForVideo.length > 1) {
@@ -105,7 +267,7 @@ export default function Dashboard() {
   }, [videoGenerated, selectedItemsForVideo.length]);
 
   const handleDownload = () => {
-    const videoUrl = RESTAURANT_DATA.highlights[0].url;
+    const videoUrl = data.highlights[0].url;
     
     // Probeer directe download
     const link = document.createElement('a');
@@ -317,12 +479,15 @@ export default function Dashboard() {
           <div className="space-y-8">
             <div className="flex justify-between items-center">
               <h2 className="text-4xl font-serif italic">Categorieën Beheren</h2>
-              <button className="bg-brand-gold text-brand-dark px-6 py-3 rounded-xl font-bold flex items-center gap-2 hover:scale-105 transition-transform">
+              <button 
+                onClick={() => setIsAddingCategory(true)}
+                className="bg-brand-gold text-brand-dark px-6 py-3 rounded-xl font-bold flex items-center gap-2 hover:scale-105 transition-transform"
+              >
                 <Plus className="w-5 h-5" /> Nieuwe Categorie
               </button>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              {RESTAURANT_DATA.sections.map((section, i) => (
+              {data.sections.map((section, i) => (
                 <motion.div 
                   key={i}
                   initial={{ opacity: 0, y: 20 }}
@@ -331,16 +496,22 @@ export default function Dashboard() {
                 >
                   <div className="relative h-48">
                     <img 
-                      src={section.items[0]?.image} 
+                      src={section.items[0]?.image || 'https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?auto=format&fit=crop&q=80&w=800'} 
                       className="w-full h-full object-cover opacity-50 group-hover:scale-105 transition-transform duration-700" 
                       referrerPolicy="no-referrer"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black to-transparent" />
                     <div className="absolute top-6 right-6 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button className="p-3 bg-white/10 backdrop-blur-md rounded-xl hover:bg-brand-gold hover:text-brand-dark transition-all">
+                      <button 
+                        onClick={() => setEditingCategory(section)}
+                        className="p-3 bg-white/10 backdrop-blur-md rounded-xl hover:bg-brand-gold hover:text-brand-dark transition-all"
+                      >
                         <Edit2 className="w-5 h-5" />
                       </button>
-                      <button className="p-3 bg-red-500/20 backdrop-blur-md rounded-xl hover:bg-red-500 text-red-500 hover:text-white transition-all">
+                      <button 
+                        onClick={() => handleDeleteCategory(section.title)}
+                        className="p-3 bg-red-500/20 backdrop-blur-md rounded-xl hover:bg-red-500 text-red-500 hover:text-white transition-all"
+                      >
                         <Trash2 className="w-5 h-5" />
                       </button>
                     </div>
@@ -360,7 +531,10 @@ export default function Dashboard() {
           <div className="space-y-8">
             <div className="flex justify-between items-center">
               <h2 className="text-4xl font-serif italic">Producten Beheren</h2>
-              <button className="bg-brand-gold text-brand-dark px-6 py-3 rounded-xl font-bold flex items-center gap-2 hover:scale-105 transition-transform">
+              <button 
+                onClick={() => setIsAddingProduct(true)}
+                className="bg-brand-gold text-brand-dark px-6 py-3 rounded-xl font-bold flex items-center gap-2 hover:scale-105 transition-transform"
+              >
                 <Plus className="w-5 h-5" /> Nieuw Product
               </button>
             </div>
@@ -375,7 +549,7 @@ export default function Dashboard() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/5">
-                  {RESTAURANT_DATA.sections.flatMap(s => s.items.map(item => ({ ...item, category: s.title }))).map((item) => (
+                  {data.sections.flatMap(s => s.items.map(item => ({ ...item, category: s.title }))).map((item) => (
                     <tr key={item.id} className="hover:bg-white/[0.02] transition-colors group">
                       <td className="px-8 py-4">
                         <div className="flex items-center gap-4">
@@ -392,8 +566,18 @@ export default function Dashboard() {
                       <td className="px-8 py-4 font-serif text-brand-gold">€{item.price.toFixed(2)}</td>
                       <td className="px-8 py-4">
                         <div className="flex justify-end gap-2">
-                          <button className="p-2 hover:text-brand-gold transition-colors"><Edit2 className="w-4 h-4" /></button>
-                          <button className="p-2 hover:text-red-500 transition-colors"><Trash2 className="w-4 h-4" /></button>
+                          <button 
+                            onClick={() => setEditingProduct({ item, sectionTitle: item.category })}
+                            className="p-2 hover:text-brand-gold transition-colors"
+                          >
+                            <Edit2 className="w-4 h-4" />
+                          </button>
+                          <button 
+                            onClick={() => handleDeleteProduct(item.category, item.id)}
+                            className="p-2 hover:text-red-500 transition-colors"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -436,7 +620,7 @@ export default function Dashboard() {
                   <h3 className="text-xl font-serif italic mb-6">Stap 1: Selectie</h3>
                   {videoMode === 'single' && (
                     <div className="grid grid-cols-2 gap-4">
-                      {RESTAURANT_DATA.sections.flatMap(s => s.items).map(item => (
+                      {data.sections.flatMap(s => s.items).map(item => (
                         <div 
                           key={item.id}
                           onClick={() => {
@@ -457,7 +641,7 @@ export default function Dashboard() {
 
                   {videoMode === 'category' && (
                     <div className="space-y-4">
-                      {RESTAURANT_DATA.sections.map(s => (
+                      {data.sections.map(s => (
                         <div 
                           key={s.title}
                           onClick={() => {
@@ -469,7 +653,7 @@ export default function Dashboard() {
                           }`}
                         >
                           <div className="flex items-center gap-6">
-                            <img src={s.items[0].image} className="w-16 h-16 rounded-2xl object-cover" />
+                            <img src={s.items[0]?.image || 'https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?auto=format&fit=crop&q=80&w=800'} className="w-16 h-16 rounded-2xl object-cover" />
                             <div>
                               <h4 className="text-xl font-serif italic">{s.title}</h4>
                               <p className="text-white/40 text-sm">{s.items.length} Producten</p>
@@ -483,7 +667,7 @@ export default function Dashboard() {
 
                   {videoMode === 'custom' && (
                     <div className="grid grid-cols-2 gap-4">
-                      {RESTAURANT_DATA.sections.flatMap(s => s.items).map(item => (
+                      {data.sections.flatMap(s => s.items).map(item => (
                         <div 
                           key={item.id}
                           onClick={() => {
@@ -553,7 +737,7 @@ export default function Dashboard() {
                       <>
                         <video 
                           ref={videoRef}
-                          src={RESTAURANT_DATA.highlights[0].url} 
+                          src={data.highlights[0].url} 
                           autoPlay loop muted={isMuted} playsInline 
                           className="absolute inset-0 w-full h-full object-cover opacity-30 blur-sm"
                         />
@@ -755,7 +939,7 @@ export default function Dashboard() {
     <div className="flex min-h-screen bg-[#0F0F0F] text-white font-sans">
       <aside className="w-72 border-r border-white/5 p-8 flex flex-col">
         <div className="mb-12">
-          <h1 className="text-2xl font-serif italic text-brand-gold">Menu Manager</h1>
+          <h1 className="text-2xl font-serif italic text-brand-gold">{data.name} Manager</h1>
         </div>
 
         <nav className="flex-1 space-y-2">
@@ -781,7 +965,7 @@ export default function Dashboard() {
               <User className="w-5 h-5" />
             </div>
             <div>
-              <p className="text-sm font-medium">L'Artiste Admin</p>
+              <p className="text-sm font-medium">{data.name} Admin</p>
               <p className="text-xs text-white/40">Beheerder</p>
             </div>
           </div>
@@ -814,6 +998,157 @@ export default function Dashboard() {
 
         {renderContent()}
       </main>
+
+      {/* Modals */}
+      <AnimatePresence>
+        {(editingProduct || isAddingProduct) && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              className="bg-[#1A1A1A] border border-white/10 rounded-[2rem] p-8 w-full max-w-lg"
+            >
+              <h3 className="text-2xl font-serif italic mb-6">
+                {editingProduct ? 'Product Bewerken' : 'Nieuw Product Toevoegen'}
+              </h3>
+              <form onSubmit={handleSaveProduct} className="space-y-4">
+                <div className="flex gap-6 mb-6">
+                  <div className="w-32 h-32 rounded-2xl bg-white/5 border border-white/10 overflow-hidden flex items-center justify-center relative group">
+                    {(imagePreview || editingProduct?.item.image) ? (
+                      <img src={imagePreview || editingProduct?.item.image} className="w-full h-full object-cover" />
+                    ) : (
+                      <Upload className="w-8 h-8 text-white/20" />
+                    )}
+                    <input 
+                      type="file" 
+                      accept="image/*" 
+                      onChange={handleFileChange}
+                      className="absolute inset-0 opacity-0 cursor-pointer z-10" 
+                    />
+                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity pointer-events-none">
+                      <p className="text-[10px] font-bold uppercase tracking-widest">Wijzig</p>
+                    </div>
+                  </div>
+                  <div className="flex-1 space-y-4">
+                    <div>
+                      <label className="text-xs text-white/40 uppercase tracking-widest mb-2 block">Categorie</label>
+                      <select 
+                        name="category" 
+                        defaultValue={editingProduct?.sectionTitle || data.sections[0]?.title}
+                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 focus:border-brand-gold outline-none transition-colors"
+                      >
+                        {data.sections.map(s => (
+                          <option key={s.title} value={s.title} className="bg-brand-dark">{s.title}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-xs text-white/40 uppercase tracking-widest mb-2 block">Naam</label>
+                      <input name="name" type="text" defaultValue={editingProduct?.item.name} required className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 focus:border-brand-gold outline-none transition-colors" />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 gap-4">
+                  <div>
+                    <label className="text-xs text-white/40 uppercase tracking-widest mb-2 block">Prijs (€)</label>
+                    <input name="price" type="number" step="0.01" defaultValue={editingProduct?.item.price} required className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 focus:border-brand-gold outline-none transition-colors" />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-xs text-white/40 uppercase tracking-widest mb-2 block">Beschrijving</label>
+                  <textarea name="description" defaultValue={editingProduct?.item.description} required className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 focus:border-brand-gold outline-none transition-colors h-24" />
+                </div>
+
+                <div className="flex gap-4 pt-4">
+                  <button type="button" onClick={() => { setEditingProduct(null); setIsAddingProduct(false); setImagePreview(null); }} className="flex-1 py-4 rounded-xl border border-white/10 hover:bg-white/5 transition-colors">Annuleren</button>
+                  <button type="submit" className="flex-1 py-4 rounded-xl bg-brand-gold text-brand-dark font-bold hover:scale-105 transition-transform">Opslaan</button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+
+        {(editingCategory || isAddingCategory) && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              className="bg-[#1A1A1A] border border-white/10 rounded-[2rem] p-8 w-full max-w-lg"
+            >
+              <h3 className="text-2xl font-serif italic mb-6">
+                {editingCategory ? 'Categorie Bewerken' : 'Nieuwe Categorie Toevoegen'}
+              </h3>
+              <form onSubmit={handleSaveCategory} className="space-y-4">
+                <div className="flex items-center gap-6 mb-6">
+                  <div className="w-24 h-24 rounded-2xl bg-white/5 border border-white/10 overflow-hidden flex items-center justify-center relative group">
+                    {(imagePreview || editingCategory?.items[0]?.image) ? (
+                      <img src={imagePreview || editingCategory?.items[0]?.image} className="w-full h-full object-cover" />
+                    ) : (
+                      <Upload className="w-6 h-6 text-white/20" />
+                    )}
+                    <input 
+                      type="file" 
+                      accept="image/*" 
+                      onChange={handleFileChange}
+                      className="absolute inset-0 opacity-0 cursor-pointer z-10" 
+                    />
+                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity pointer-events-none">
+                      <p className="text-[10px] font-bold uppercase tracking-widest">Wijzig</p>
+                    </div>
+                  </div>
+                  <div className="flex-1">
+                    <label className="text-xs text-white/40 uppercase tracking-widest mb-2 block">Titel</label>
+                    <input name="title" defaultValue={editingCategory?.title} required className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 focus:border-brand-gold outline-none transition-colors" />
+                  </div>
+                </div>
+                <div className="flex gap-4 pt-4">
+                  <button type="button" onClick={() => { setEditingCategory(null); setIsAddingCategory(false); setImagePreview(null); }} className="flex-1 py-4 rounded-xl border border-white/10 hover:bg-white/5 transition-colors">Annuleren</button>
+                  <button type="submit" className="flex-1 py-4 rounded-xl bg-brand-gold text-brand-dark font-bold hover:scale-105 transition-transform">Opslaan</button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+
+        {deleteConfirmation && (
+          <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              className="bg-[#1A1A1A] border border-red-500/20 rounded-[2rem] p-8 w-full max-w-md text-center"
+            >
+              <div className="w-20 h-20 rounded-full bg-red-500/10 flex items-center justify-center text-red-500 mx-auto mb-6">
+                <Trash2 className="w-10 h-10" />
+              </div>
+              <h3 className="text-2xl font-serif italic mb-4">Weet je het zeker?</h3>
+              <p className="text-white/60 mb-8">
+                {deleteConfirmation.type === 'product' 
+                  ? 'Dit product wordt definitief verwijderd uit je menukaart.' 
+                  : 'Deze categorie en ALLE producten daarin worden definitief verwijderd.'}
+              </p>
+              <div className="flex gap-4">
+                <button 
+                  onClick={() => setDeleteConfirmation(null)} 
+                  className="flex-1 py-4 rounded-xl border border-white/10 hover:bg-white/5 transition-colors"
+                >
+                  Annuleren
+                </button>
+                <button 
+                  onClick={confirmDelete} 
+                  className="flex-1 py-4 rounded-xl bg-red-500 text-white font-bold hover:bg-red-600 transition-colors"
+                >
+                  Verwijderen
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

@@ -1,7 +1,7 @@
 import { RestaurantData } from './types';
 
 export const RESTAURANT_DATA: RestaurantData = {
-  name: "L'Artiste",
+  name: "Porto Carrara",
   tagline: "Culinaire revolutie op je bord",
   sections: [
     {

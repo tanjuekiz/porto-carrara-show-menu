@@ -10,12 +10,13 @@ import VideoShowcase from './components/VideoShowcase';
 import LocationMap from './components/LocationMap';
 import Footer from './components/Footer';
 import Dashboard from './components/Dashboard';
-import { RESTAURANT_DATA } from './constants';
+import { RESTAURANT_DATA as INITIAL_DATA } from './constants';
 import { motion, useScroll, useSpring } from 'motion/react';
 import { Settings, Eye } from 'lucide-react';
 
 export default function App() {
   const [view, setView] = useState<'menu' | 'dashboard'>('dashboard');
+  const [restaurantData, setRestaurantData] = useState(INITIAL_DATA);
   const { scrollYProgress } = useScroll();
   const scaleX = useSpring(scrollYProgress, {
     stiffness: 100,
@@ -26,7 +27,7 @@ export default function App() {
   if (view === 'dashboard') {
     return (
       <div className="relative">
-        <Dashboard />
+        <Dashboard data={restaurantData} onUpdate={setRestaurantData} />
         <button 
           onClick={() => setView('menu')}
           className="fixed bottom-8 right-8 bg-brand-gold text-brand-dark p-4 rounded-full shadow-2xl hover:scale-110 transition-transform z-50 flex items-center gap-2 font-bold"
@@ -55,17 +56,17 @@ export default function App() {
         style={{ scaleX }}
       />
 
-      <Header name={RESTAURANT_DATA.name} tagline={RESTAURANT_DATA.tagline} />
+      <Header name={restaurantData.name} tagline={restaurantData.tagline} />
 
       <main className="max-w-7xl mx-auto px-4 py-24">
-        {RESTAURANT_DATA.sections.map((section, index) => (
+        {restaurantData.sections.map((section, index) => (
           <MenuSection key={index} section={section} />
         ))}
       </main>
 
-      <VideoShowcase highlights={RESTAURANT_DATA.highlights} />
+      <VideoShowcase highlights={restaurantData.highlights} />
       
-      <LocationMap address={RESTAURANT_DATA.location.address} />
+      <LocationMap address={restaurantData.location.address} />
 
       <Footer />
     </div>
