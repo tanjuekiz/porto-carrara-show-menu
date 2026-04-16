@@ -34,12 +34,12 @@ export default function App() {
     localStorage.setItem('porto_carrara_data', JSON.stringify(restaurantData));
   }, [restaurantData]);
 
-  const [tvState, setTvState] = useState<'film' | 'menu'>('film');
+  const [tvState, setTvState] = useState<'film' | 'menu'>('menu');
   const [menuPageIndex, setMenuPageIndex] = useState(0);
   const [currentFilmUrl, setCurrentFilmUrl] = useState('');
   const [highlightProduct, setHighlightProduct] = useState<any>(null);
 
-  const SECTIONS_PER_PAGE = 3;
+  const SECTIONS_PER_PAGE = 4;
   const totalMenuPages = Math.ceil(restaurantData.sections.length / SECTIONS_PER_PAGE);
 
   // TV Mode Product Cycling
@@ -86,7 +86,7 @@ export default function App() {
           setTvState('film');
           setMenuPageIndex(0);
         }
-      }, 120000); // 2 minuten per pagina
+      }, 60000); // 1 minuut per pagina
     }
 
     return () => clearTimeout(timer);
@@ -180,27 +180,26 @@ export default function App() {
                   <div className="w-48 h-2 bg-brand-gold mx-auto rounded-full shadow-lg shadow-brand-gold/20" />
                 </div>
                 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-20 gap-y-16 flex-1 overflow-hidden">
+                <div className="grid grid-cols-4 gap-6 flex-1 overflow-hidden h-full pb-10">
                   {restaurantData.sections
                     .slice(menuPageIndex * SECTIONS_PER_PAGE, (menuPageIndex + 1) * SECTIONS_PER_PAGE)
                     .map((section, sIdx) => (
-                    <div key={sIdx} className="space-y-10">
-                      <h2 className="text-5xl font-serif italic text-brand-gold border-b-2 border-brand-gold/30 pb-4 mb-8 flex items-center gap-4">
-                        <span className="w-12 h-[1px] bg-brand-gold/30" />
+                    <div key={sIdx} className="bg-white/5 p-5 rounded-[2rem] border border-white/5 flex flex-col h-full">
+                      <h2 className="text-2xl font-serif italic text-brand-gold border-b border-brand-gold/20 pb-2 mb-4 text-center">
                         {section.title}
                       </h2>
-                      <div className="space-y-8">
+                      <div className="space-y-3 overflow-y-auto pr-1 custom-scrollbar flex-1">
                         {section.items.map((item, iIdx) => (
-                          <div key={iIdx} className="flex justify-between items-start group">
-                            <div className="flex-1 pr-10">
-                              <h3 className="text-3xl font-medium mb-2 group-hover:text-brand-gold transition-colors text-white/90">
+                          <div key={iIdx} className="flex justify-between items-start gap-2">
+                            <div className="flex-1">
+                              <h3 className="text-base font-medium text-white/90 leading-tight">
                                 {item.name}
                               </h3>
-                              <p className="text-lg text-white/40 line-clamp-1 italic font-light">
+                              <p className="text-[10px] text-white/30 line-clamp-1 italic">
                                 {item.description}
                               </p>
                             </div>
-                            <span className="text-3xl font-serif text-brand-gold font-bold">
+                            <span className="text-base font-serif text-brand-gold whitespace-nowrap">
                               €{item.price.toFixed(2)}
                             </span>
                           </div>
@@ -279,7 +278,38 @@ export default function App() {
         style={{ scaleX }}
       />
 
-      <Header name={restaurantData.name} tagline={restaurantData.tagline} />
+      <Header 
+        name={restaurantData.name} 
+        tagline={restaurantData.tagline} 
+        logo={restaurantData.logo}
+        heroImage={restaurantData.heroImage}
+        announcement={restaurantData.activeAnnouncement}
+      />
+
+      <AnimatePresence>
+        {restaurantData.isSiteOpen === false && view === 'menu' && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] bg-brand-dark/95 backdrop-blur-xl flex items-center justify-center p-8 text-center"
+          >
+            <div className="max-w-md">
+              <div className="w-20 h-20 bg-red-500/10 border border-red-500/20 rounded-full flex items-center justify-center mx-auto mb-8">
+                <X className="w-10 h-10 text-red-500" />
+              </div>
+              <h2 className="text-4xl font-serif italic text-brand-gold mb-4">Wij zijn tijdelijk gesloten</h2>
+              <p className="text-white/60 mb-8">Onze online menukaart is momenteel niet live. Kom snel weer terug!</p>
+              <button 
+                onClick={() => setView('dashboard')}
+                className="px-8 py-3 bg-white/5 border border-white/10 rounded-xl text-sm font-bold hover:bg-white/10 transition-colors"
+              >
+                Terug naar beheer
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <main className="max-w-7xl mx-auto px-4 py-24">
         {restaurantData.sections.map((section, index) => (

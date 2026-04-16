@@ -27,7 +27,7 @@ export const RESTAURANT_DATA: RestaurantData = {
           name: "Carpaccio di Manzo",
           description: "Dungesneden runderhaas van topkwaliteit, rijkelijk bestrooid met vers geschaafde Parmezaanse kaas, geroosterde pijnboompitten en knapperige rucola.",
           price: 16.00,
-          image: "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&q=80&w=800",
+          image: "https://images.unsplash.com/photo-1626082927389-6cd097cdc6ec?auto=format&fit=crop&q=80&w=800",
           tags: ["Klassieker"]
         },
         {
@@ -70,6 +70,27 @@ export const RESTAURANT_DATA: RestaurantData = {
       ]
     },
     {
+      title: "Pizza's",
+      items: [
+        {
+          id: "p1",
+          name: "Pizza Margarita",
+          description: "De tijdloze klassieker met verse tomatensaus, smeuïge mozzarella en blaadjes verse basilicum.",
+          price: 12.50,
+          image: "https://images.unsplash.com/photo-1595854341625-f33ee10dbf94?auto=format&fit=crop&q=80&w=1000",
+          tags: ["Vegetarisch", "Populair"]
+        },
+        {
+          id: "p2",
+          name: "Pizza Diavola",
+          description: "Voor de durvers: pikante salami, mozzarella en verse chilipepers op een bodem van tomatensaus.",
+          price: 14.50,
+          image: "https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&q=80&w=800",
+          tags: ["Pittig"]
+        }
+      ]
+    },
+    {
       title: "Dranken",
       items: [
         {
@@ -99,49 +120,53 @@ export const RESTAURANT_DATA: RestaurantData = {
   ],
   highlights: [
     {
-      id: "h1",
-      url: "https://www.w3schools.com/html/mov_bbb.mp4",
-      title: "Animatie: Het Konijn (Kids)",
-      activeOnTv: true
-    },
-    {
-      id: "h2",
-      url: "https://vjs.zencdn.net/v/oceans.mp4",
-      title: "Natuur: De Wonderlijke Oceaan",
-      activeOnTv: true
-    },
-    {
-      id: "h3",
-      url: "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4",
-      title: "Natuur: Bloeiende Lente",
-      activeOnTv: true
-    },
-    {
-      id: "h4",
+      id: "mi1",
       url: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4",
-      title: "Avontuur: De Grote Reis",
+      title: "Praag - Nachtelijke Infiltratie",
       activeOnTv: true
     },
     {
-      id: "h5",
+      id: "mi2",
+      url: "https://vjs.zencdn.net/v/oceans.mp4",
+      title: "CIA Vault - Operatie Langley",
+      activeOnTv: true
+    },
+    {
+      id: "mi3",
+      url: "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4",
+      title: "Sevilla - De Motorfiets Achtervolging",
+      activeOnTv: true
+    },
+    {
+      id: "mi4",
       url: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
-      title: "Cartoon: Bunny & Friends",
+      title: "Shanghai - Wolkenkrabber Sprong",
       activeOnTv: true
     },
     {
-      id: "h6",
+      id: "mi5",
       url: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4",
-      title: "Fantasie: Droomwereld",
+      title: "Vaticaanstad - De Grote Ontsnapping",
       activeOnTv: true
     },
     {
-      id: "h7",
+      id: "mi6",
       url: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4",
-      title: "Actie: De Vuurvonk",
+      title: "Burj Khalifa - Beklimming in Dubai",
+      activeOnTv: true
+    },
+    {
+      id: "mi7",
+      url: "https://www.w3schools.com/html/mov_bbb.mp4",
+      title: "Kremlin - Operatie Moskou",
       activeOnTv: true
     }
   ],
-  selectedTvHighlightIds: ["h1", "h2", "h3", "h4", "h5", "h6", "h7"],
+  selectedTvHighlightIds: ["mi1", "mi2", "mi3", "mi4", "mi5", "mi6", "mi7"],
+  isSiteOpen: true,
+  activeAnnouncement: "Welkom bij Porto Carrara! Geniet vandaag van onze dagschotels.",
+  heroImage: "https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?auto=format&fit=crop&q=80&w=2000",
+  logo: "", 
   location: {
     address: "Culinairestraat 123, 1000 Brussel",
     lat: 50.8503,

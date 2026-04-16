@@ -18,10 +18,13 @@ import {
   Tv,
   TrendingUp,
   Upload,
-  Settings
+  Settings,
+  Sparkles,
+  Loader2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { RestaurantData, MenuItem, MenuSection } from '../types';
+import { generateProductImage } from '../services/geminiService';
 
 interface StatCardProps {
   icon: React.ReactNode;
@@ -70,6 +73,10 @@ export default function Dashboard({ data, onUpdate }: { data: RestaurantData, on
   const [isAddingCategory, setIsAddingCategory] = useState(false);
   const [selectedTargetCategory, setSelectedTargetCategory] = useState(data.sections[0]?.title || '');
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [logoPreview, setLogoPreview] = useState<string | null>(data.logo || null);
+  const [heroPreview, setHeroPreview] = useState<string | null>(data.heroImage || null);
+  const [isGeneratingAiImage, setIsGeneratingAiImage] = useState(false);
+  const [aiFormValues, setAiFormValues] = useState({ name: '', description: '' });
 
   const fileToBase64 = (file: File, maxWidth = 800, maxHeight = 800): Promise<string> => {
     return new Promise((resolve, reject) => {
@@ -119,16 +126,39 @@ export default function Dashboard({ data, onUpdate }: { data: RestaurantData, on
     }
   };
 
+  const handleAiPhotoGenerate = async () => {
+    if (!aiFormValues.name) {
+      alert("Vul eerst een naam in voor het product om een AI foto te genereren.");
+      return;
+    }
+
+    setIsGeneratingAiImage(true);
+    try {
+      const imageUrl = await generateProductImage(aiFormValues.name, aiFormValues.description, data.name);
+      setImagePreview(imageUrl);
+    } catch (err) {
+      alert("AI Foto genereren mislukt. Controleer je internetverbinding of probeer het later opnieuw.");
+    } finally {
+      setIsGeneratingAiImage(false);
+    }
+  };
+
   const [showStockGallery, setShowStockGallery] = useState(false);
   const stockImages = [
     { url: "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&q=80&w=800", label: "Gezond" },
-    { url: "https://images.unsplash.com/photo-1567620905732-2d1ec7bb7445?auto=format&fit=crop&q=80&w=800", label: "Pancakes" },
-    { url: "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&q=80&w=800", label: "Pizza" },
-    { url: "https://images.unsplash.com/photo-1482049016688-2d3e1b311543?auto=format&fit=crop&q=80&w=800", label: "Pasta" },
-    { url: "https://images.unsplash.com/photo-1555939594-58d7cb561ad1?auto=format&fit=crop&q=80&w=800", label: "BBQ" },
+    { url: "https://images.unsplash.com/photo-1574071318508-1cdbad80ad38?auto=format&fit=crop&q=80&w=800", label: "Margarita" },
+    { url: "https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&q=80&w=800", label: "Diavola" },
+    { url: "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&q=80&w=800", label: "Peperoni" },
+    { url: "https://images.unsplash.com/photo-1571217711202-3932782e4695?auto=format&fit=crop&q=80&w=800", label: "Lasagne" },
+    { url: "https://images.unsplash.com/photo-1612874742237-6526221588e3?auto=format&fit=crop&q=80&w=800", label: "Carbonara" },
+    { url: "https://images.unsplash.com/photo-1551183053-bf91a1d81141?auto=format&fit=crop&q=80&w=800", label: "Bolonese" },
+    { url: "https://images.unsplash.com/photo-1592417817098-8fd3d9eb14a5?auto=format&fit=crop&q=80&w=800", label: "Burrata" },
+    { url: "https://images.unsplash.com/photo-1626082927389-6cd097cdc6ec?auto=format&fit=crop&q=80&w=800", label: "Carpaccio" },
+    { url: "https://images.unsplash.com/photo-1571877227200-af0b380eabbb?auto=format&fit=crop&q=80&w=800", label: "Tiramisu" },
+    { url: "https://images.unsplash.com/photo-1555939594-58d7cb561ad1?auto=format&fit=crop&q=80&w=800", label: "Mixed Grill" },
     { url: "https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?auto=format&fit=crop&q=80&w=800", label: "Salade" },
     { url: "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&q=80&w=800", label: "Vegan" },
-    { url: "https://images.unsplash.com/photo-1476224203421-9ac39bcb3327?auto=format&fit=crop&q=80&w=800", label: "Burger" },
+    { url: "https://images.unsplash.com/photo-1476224203421-9ac39bcb3327?auto=format&fit=crop&q=80&w=800", label: "Schotel" },
     { url: "https://images.unsplash.com/photo-1467003909585-2f8a72700288?auto=format&fit=crop&q=80&w=800", label: "Zalm" },
   ];
 
@@ -319,7 +349,7 @@ export default function Dashboard({ data, onUpdate }: { data: RestaurantData, on
     setImagePreview(null);
   };
 
-  const handleSaveBusinessSettings = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSaveBusinessSettings = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
     const newData = {
@@ -328,6 +358,10 @@ export default function Dashboard({ data, onUpdate }: { data: RestaurantData, on
       tagline: formData.get('tagline') as string,
       phone: formData.get('phone') as string,
       email: formData.get('email') as string,
+      isSiteOpen: formData.get('isSiteOpen') === 'on',
+      activeAnnouncement: formData.get('activeAnnouncement') as string,
+      logo: logoPreview || data.logo,
+      heroImage: heroPreview || data.heroImage,
       openingHours: {
         weekdays: formData.get('weekdays') as string,
         weekend: formData.get('weekend') as string,
@@ -335,7 +369,23 @@ export default function Dashboard({ data, onUpdate }: { data: RestaurantData, on
       }
     };
     onUpdate(newData);
-    alert('Bedrijfsgegevens succesvol bijgewerkt!');
+    alert('Instellingen succesvol opgeslagen!');
+  };
+
+  const handleLogoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const base64 = await fileToBase64(file, 400, 400);
+      setLogoPreview(base64);
+    }
+  };
+
+  const handleHeroChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const base64 = await fileToBase64(file, 1920, 1080);
+      setHeroPreview(base64);
+    }
   };
 
   const handleDownload = () => {
@@ -604,7 +654,10 @@ export default function Dashboard({ data, onUpdate }: { data: RestaurantData, on
             <div className="flex justify-between items-center">
               <h2 className="text-4xl font-serif italic">Producten Beheren</h2>
               <button 
-                onClick={() => setIsAddingProduct(true)}
+                onClick={() => {
+                  setIsAddingProduct(true);
+                  setAiFormValues({ name: '', description: '' });
+                }}
                 className="bg-brand-gold text-brand-dark px-6 py-3 rounded-xl font-bold flex items-center gap-2 hover:scale-105 transition-transform"
               >
                 <Plus className="w-5 h-5" /> Nieuw Product
@@ -639,7 +692,10 @@ export default function Dashboard({ data, onUpdate }: { data: RestaurantData, on
                       <td className="px-8 py-4">
                         <div className="flex justify-end gap-2">
                           <button 
-                            onClick={() => setEditingProduct({ item, sectionTitle: item.category })}
+                            onClick={() => {
+                              setEditingProduct({ item, sectionTitle: item.category });
+                              setAiFormValues({ name: item.name, description: item.description });
+                            }}
                             className="p-2 hover:text-brand-gold transition-colors"
                           >
                             <Edit2 className="w-4 h-4" />
@@ -1003,64 +1059,137 @@ export default function Dashboard({ data, onUpdate }: { data: RestaurantData, on
 
       case 'Instellingen':
         return (
-          <div className="space-y-8 max-w-4xl">
+          <div className="space-y-8 max-w-5xl pb-24">
             <div className="flex justify-between items-center">
-              <h2 className="text-4xl font-serif italic">Bedrijfsinstellingen</h2>
+              <h2 className="text-4xl font-serif italic">Website & Bedrijfsinstellingen</h2>
+              <div className="flex items-center gap-4 bg-white/5 px-6 py-3 rounded-2xl border border-white/10">
+                <span className={`w-3 h-3 rounded-full ${data.isSiteOpen ? 'bg-green-500 shadow-[0_0_15px_rgba(34,197,94,0.5)]' : 'bg-red-500 shadow-[0_0_15px_rgba(239,68,68,0.5)]'}`} />
+                <span className="text-sm font-bold uppercase tracking-widest">{data.isSiteOpen ? 'Website Live' : 'Website Gesloten'}</span>
+              </div>
             </div>
             
-            <div className="bg-[#1A1A1A] rounded-[2rem] border border-white/5 p-8">
-              <form onSubmit={handleSaveBusinessSettings} className="space-y-8">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                  <div className="space-y-4">
-                    <h3 className="text-brand-gold font-serif italic text-xl">Algemene Informatie</h3>
-                    <div>
-                      <label className="text-xs text-white/40 uppercase tracking-widest mb-2 block">Restaurant Naam</label>
-                      <input name="name" defaultValue={data.name} required className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 focus:border-brand-gold outline-none transition-colors" />
+            <form onSubmit={handleSaveBusinessSettings} className="space-y-8">
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                {/* Kolom 1: Status & Identiteit */}
+                <div className="space-y-8">
+                  <div className="bg-[#1A1A1A] rounded-[2rem] border border-white/5 p-8 space-y-6">
+                    <h3 className="text-brand-gold font-serif italic text-xl">Website Status</h3>
+                    
+                    <div className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/5">
+                      <div>
+                        <p className="font-bold text-sm">Online Bereikbaarheid</p>
+                        <p className="text-xs text-white/40">Zet de site aan of uit voor klanten</p>
+                      </div>
+                      <label className="relative inline-flex items-center cursor-pointer">
+                        <input name="isSiteOpen" type="checkbox" defaultChecked={data.isSiteOpen} className="sr-only peer" />
+                        <div className="w-14 h-7 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-brand-gold"></div>
+                      </label>
                     </div>
+
                     <div>
-                      <label className="text-xs text-white/40 uppercase tracking-widest mb-2 block">Slogan / Tagline</label>
-                      <input name="tagline" defaultValue={data.tagline} required className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 focus:border-brand-gold outline-none transition-colors" />
+                      <label className="text-xs text-white/40 uppercase tracking-widest mb-2 block">Actuele Mededeling</label>
+                      <textarea 
+                        name="activeAnnouncement" 
+                        placeholder="bijv. Vandaag 10% korting op alle pizza's!" 
+                        defaultValue={data.activeAnnouncement}
+                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 focus:border-brand-gold outline-none transition-colors h-24 text-sm" 
+                      />
+                      <p className="text-[10px] text-white/20 mt-2 italic">Deze tekst verschijnt bovenaan je website.</p>
                     </div>
                   </div>
 
-                  <div className="space-y-4">
-                    <h3 className="text-brand-gold font-serif italic text-xl">Contactgegevens</h3>
-                    <div>
-                      <label className="text-xs text-white/40 uppercase tracking-widest mb-2 block">Telefoonnummer</label>
-                      <input name="phone" defaultValue={data.phone} required className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 focus:border-brand-gold outline-none transition-colors" />
-                    </div>
-                    <div>
-                      <label className="text-xs text-white/40 uppercase tracking-widest mb-2 block">E-mailadres</label>
-                      <input name="email" type="email" defaultValue={data.email} required className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 focus:border-brand-gold outline-none transition-colors" />
+                  <div className="bg-[#1A1A1A] rounded-[2rem] border border-white/5 p-8 space-y-6">
+                    <h3 className="text-brand-gold font-serif italic text-xl">Identiteit</h3>
+                    
+                    <div className="space-y-4">
+                      <p className="text-xs text-white/40 uppercase tracking-widest">Logo</p>
+                      <div className="w-full aspect-square bg-white/5 border border-white/10 rounded-3xl overflow-hidden relative group">
+                        {logoPreview ? (
+                          <img src={logoPreview} className="w-full h-full object-contain p-4" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-white/20 uppercase text-[10px] font-bold">Geen Logo</div>
+                        )}
+                        <input type="file" accept="image/*" onChange={handleLogoChange} className="absolute inset-0 opacity-0 cursor-pointer z-10" />
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity pointer-events-none">
+                          <Upload className="w-6 h-6" />
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
 
-                <div className="space-y-4">
-                  <h3 className="text-brand-gold font-serif italic text-xl">Openingsuren</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div>
-                      <label className="text-xs text-white/40 uppercase tracking-widest mb-2 block">Maandag - Donderdag</label>
-                      <input name="weekdays" defaultValue={data.openingHours.weekdays} required className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 focus:border-brand-gold outline-none transition-colors" />
+                {/* Kolom 2: Algemene Info & Hero */}
+                <div className="lg:col-span-2 space-y-8">
+                  <div className="bg-[#1A1A1A] rounded-[2rem] border border-white/5 p-8">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                      <div className="space-y-4">
+                        <h3 className="text-brand-gold font-serif italic text-xl">Algemene Informatie</h3>
+                        <div>
+                          <label className="text-xs text-white/40 uppercase tracking-widest mb-2 block">Restaurant Naam</label>
+                          <input name="name" defaultValue={data.name} required className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 focus:border-brand-gold outline-none transition-colors" />
+                        </div>
+                        <div>
+                          <label className="text-xs text-white/40 uppercase tracking-widest mb-2 block">Slogan / Tagline</label>
+                          <input name="tagline" defaultValue={data.tagline} required className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 focus:border-brand-gold outline-none transition-colors" />
+                        </div>
+                      </div>
+
+                      <div className="space-y-4">
+                        <h3 className="text-brand-gold font-serif italic text-xl">Contact & Locatie</h3>
+                        <div>
+                          <label className="text-xs text-white/40 uppercase tracking-widest mb-2 block">Telefoonnummer</label>
+                          <input name="phone" defaultValue={data.phone} required className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 focus:border-brand-gold outline-none transition-colors" />
+                        </div>
+                        <div>
+                          <label className="text-xs text-white/40 uppercase tracking-widest mb-2 block">E-mailadres</label>
+                          <input name="email" type="email" defaultValue={data.email} required className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 focus:border-brand-gold outline-none transition-colors" />
+                        </div>
+                      </div>
                     </div>
-                    <div>
-                      <label className="text-xs text-white/40 uppercase tracking-widest mb-2 block">Vrijdag - Zaterdag</label>
-                      <input name="weekend" defaultValue={data.openingHours.weekend} required className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 focus:border-brand-gold outline-none transition-colors" />
+
+                    <div className="mt-8 space-y-4">
+                      <h3 className="text-brand-gold font-serif italic text-xl">Website Hero Afbeelding</h3>
+                      <div className="w-full aspect-video bg-white/5 border border-white/10 rounded-3xl overflow-hidden relative group">
+                        {heroPreview ? (
+                          <img src={heroPreview} className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-white/20 uppercase text-[10px] font-bold">Geen Hero Image</div>
+                        )}
+                        <input type="file" accept="image/*" onChange={handleHeroChange} className="absolute inset-0 opacity-0 cursor-pointer z-10" />
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity pointer-events-none">
+                          <Upload className="w-8 h-8" />
+                        </div>
+                      </div>
+                      <p className="text-[10px] text-white/20 italic">Dit is de grote afbeelding bovenaan je homepage.</p>
                     </div>
-                    <div>
-                      <label className="text-xs text-white/40 uppercase tracking-widest mb-2 block">Zondag</label>
-                      <input name="sunday" defaultValue={data.openingHours.sunday} required className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 focus:border-brand-gold outline-none transition-colors" />
+
+                    <div className="mt-8 space-y-4">
+                      <h3 className="text-brand-gold font-serif italic text-xl">Openingsuren</h3>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div>
+                          <label className="text-xs text-white/40 uppercase tracking-widest mb-2 block">Ma - Do</label>
+                          <input name="weekdays" defaultValue={data.openingHours.weekdays} required className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 focus:border-brand-gold outline-none transition-colors" />
+                        </div>
+                        <div>
+                          <label className="text-xs text-white/40 uppercase tracking-widest mb-2 block">Vr - Za</label>
+                          <input name="weekend" defaultValue={data.openingHours.weekend} required className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 focus:border-brand-gold outline-none transition-colors" />
+                        </div>
+                        <div>
+                          <label className="text-xs text-white/40 uppercase tracking-widest mb-2 block">Zondag</label>
+                          <input name="sunday" defaultValue={data.openingHours.sunday} required className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 focus:border-brand-gold outline-none transition-colors" />
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="pt-8 border-t border-white/5 mt-8">
+                      <button type="submit" className="w-full py-5 rounded-2xl bg-brand-gold text-brand-dark font-bold hover:scale-[1.02] active:scale-[0.98] transition-all shadow-xl shadow-brand-gold/10 text-lg">
+                        Alle Wijzigingen Opslaan
+                      </button>
                     </div>
                   </div>
                 </div>
-
-                <div className="pt-4">
-                  <button type="submit" className="w-full md:w-auto px-12 py-4 rounded-xl bg-brand-gold text-brand-dark font-bold hover:scale-105 transition-transform">
-                    Instellingen Opslaan
-                  </button>
-                </div>
-              </form>
-            </div>
+              </div>
+            </form>
           </div>
         );
 
@@ -1213,6 +1342,13 @@ export default function Dashboard({ data, onUpdate }: { data: RestaurantData, on
             <motion.div 
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
+              onAnimationComplete={() => {
+                if (editingProduct) {
+                  setAiFormValues({ name: editingProduct.item.name, description: editingProduct.item.description });
+                } else {
+                  setAiFormValues({ name: '', description: '' });
+                }
+              }}
               exit={{ opacity: 0, scale: 0.9 }}
               className="bg-[#1A1A1A] border border-white/10 rounded-[2rem] p-8 w-full max-w-lg"
             >
@@ -1240,14 +1376,35 @@ export default function Dashboard({ data, onUpdate }: { data: RestaurantData, on
                               <p className="text-[10px] font-bold uppercase tracking-widest text-center">Upload</p>
                             </div>
                           </div>
-                          <button 
-                            type="button"
-                            onClick={() => setShowStockGallery(true)}
-                            className="flex-1 bg-white/5 border border-white/10 rounded-2xl flex flex-col items-center justify-center gap-2 hover:bg-white/10 transition-all border-dashed"
-                          >
-                            <Grid2X2 className="w-6 h-6 text-brand-gold" />
-                            <span className="text-[10px] font-bold uppercase tracking-widest">Kies uit map</span>
-                          </button>
+                          
+                          <div className="flex-1 flex flex-col gap-2">
+                            <button 
+                              type="button"
+                              onClick={() => setShowStockGallery(true)}
+                              className="flex-1 bg-white/5 border border-white/10 rounded-xl flex items-center justify-center gap-2 hover:bg-white/10 transition-all"
+                            >
+                              <Grid2X2 className="w-4 h-4 text-brand-gold" />
+                              <span className="text-[10px] font-bold uppercase tracking-widest">Map</span>
+                            </button>
+                            <button 
+                              type="button"
+                              onClick={handleAiPhotoGenerate}
+                              disabled={isGeneratingAiImage}
+                              className="flex-1 bg-brand-gold/10 border border-brand-gold/30 rounded-xl flex items-center justify-center gap-2 hover:bg-brand-gold/20 transition-all text-brand-gold disabled:opacity-50"
+                            >
+                              {isGeneratingAiImage ? (
+                                <>
+                                  <Loader2 className="w-4 h-4 animate-spin" />
+                                  <span className="text-[10px] font-bold uppercase tracking-widest">Zoeken...</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Sparkles className="w-4 h-4" />
+                                  <span className="text-[10px] font-bold uppercase tracking-widest">AI Foto</span>
+                                </>
+                              )}
+                            </button>
+                          </div>
                         </div>
                       </div>
                   <div className="flex-1 space-y-4">
@@ -1265,7 +1422,14 @@ export default function Dashboard({ data, onUpdate }: { data: RestaurantData, on
                     </div>
                     <div>
                       <label className="text-xs text-white/40 uppercase tracking-widest mb-2 block">Naam</label>
-                      <input name="name" type="text" defaultValue={editingProduct?.item.name} required className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 focus:border-brand-gold outline-none transition-colors" />
+                      <input 
+                        name="name" 
+                        type="text" 
+                        defaultValue={editingProduct?.item.name} 
+                        onChange={(e) => setAiFormValues(prev => ({ ...prev, name: e.target.value }))}
+                        required 
+                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 focus:border-brand-gold outline-none transition-colors" 
+                      />
                     </div>
                   </div>
                 </div>
@@ -1288,7 +1452,13 @@ export default function Dashboard({ data, onUpdate }: { data: RestaurantData, on
 
                 <div>
                   <label className="text-xs text-white/40 uppercase tracking-widest mb-2 block">Beschrijving</label>
-                  <textarea name="description" defaultValue={editingProduct?.item.description} required className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 focus:border-brand-gold outline-none transition-colors h-24" />
+                  <textarea 
+                    name="description" 
+                    defaultValue={editingProduct?.item.description} 
+                    onChange={(e) => setAiFormValues(prev => ({ ...prev, description: e.target.value }))}
+                    required 
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 focus:border-brand-gold outline-none transition-colors h-24" 
+                  />
                 </div>
 
                 <div className="flex gap-4 pt-4">

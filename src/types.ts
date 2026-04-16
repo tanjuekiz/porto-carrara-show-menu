@@ -33,6 +33,10 @@ export interface RestaurantData {
   sections: MenuSection[];
   highlights: VideoHighlight[];
   selectedTvHighlightIds?: string[];
+  isSiteOpen?: boolean;
+  activeAnnouncement?: string;
+  heroImage?: string;
+  logo?: string;
   location: {
     address: string;
     lat: number;
