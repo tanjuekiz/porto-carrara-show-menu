@@ -3,6 +3,13 @@ import { RestaurantData } from './types';
 export const RESTAURANT_DATA: RestaurantData = {
   name: "Porto Carrara",
   tagline: "Culinaire revolutie op je bord",
+  phone: "+32 2 123 45 67",
+  email: "info@portocarrara.be",
+  openingHours: {
+    weekdays: "17:00 - 22:00",
+    weekend: "17:00 - 23:00",
+    sunday: "Gesloten"
+  },
   sections: [
     {
       title: "Voorgerechten",
@@ -93,20 +100,48 @@ export const RESTAURANT_DATA: RestaurantData = {
   highlights: [
     {
       id: "h1",
-      url: "https://media.w3.org/2010/05/sintel/trailer.mp4",
-      title: "Onze Wijnen"
+      url: "https://www.w3schools.com/html/mov_bbb.mp4",
+      title: "Animatie: Het Konijn (Kids)",
+      activeOnTv: true
     },
     {
       id: "h2",
       url: "https://vjs.zencdn.net/v/oceans.mp4",
-      title: "Verse Bereiding"
+      title: "Natuur: De Wonderlijke Oceaan",
+      activeOnTv: true
     },
     {
       id: "h3",
-      url: "https://media.w3.org/2010/05/sintel/trailer.mp4",
-      title: "Grill Meesters"
+      url: "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4",
+      title: "Natuur: Bloeiende Lente",
+      activeOnTv: true
+    },
+    {
+      id: "h4",
+      url: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4",
+      title: "Avontuur: De Grote Reis",
+      activeOnTv: true
+    },
+    {
+      id: "h5",
+      url: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
+      title: "Cartoon: Bunny & Friends",
+      activeOnTv: true
+    },
+    {
+      id: "h6",
+      url: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4",
+      title: "Fantasie: Droomwereld",
+      activeOnTv: true
+    },
+    {
+      id: "h7",
+      url: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4",
+      title: "Actie: De Vuurvonk",
+      activeOnTv: true
     }
   ],
+  selectedTvHighlightIds: ["h1", "h2", "h3", "h4", "h5", "h6", "h7"],
   location: {
     address: "Culinairestraat 123, 1000 Brussel",
     lat: 50.8503,

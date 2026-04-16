@@ -15,8 +15,10 @@ import {
   Download,
   Play,
   X,
+  Tv,
   TrendingUp,
-  Upload
+  Upload,
+  Settings
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { RestaurantData, MenuItem, MenuSection } from '../types';
@@ -99,6 +101,7 @@ export default function Dashboard({ data, onUpdate }: { data: RestaurantData, on
     { name: 'Categorieën', icon: <Grid2X2 className="w-5 h-5" /> },
     { name: 'Producten', icon: <ShoppingBag className="w-5 h-5" /> },
     { name: 'Videos', icon: <Video className="w-5 h-5" /> },
+    { name: 'Instellingen', icon: <Settings className="w-5 h-5" /> },
   ];
 
   const toggleVideoItem = (id: string) => {
@@ -124,6 +127,22 @@ export default function Dashboard({ data, onUpdate }: { data: RestaurantData, on
       return data.sections.find(s => s.title === selectedCategory)?.items || [];
     }
     return allItems.filter(i => selectedVideoItems.includes(i.id));
+  };
+
+  const toggleTvFilm = (id: string) => {
+    const newData = { ...data };
+    const highlight = newData.highlights.find(h => h.id === id);
+    if (!highlight) return;
+
+    const currentlyActiveCount = newData.highlights.filter(h => h.activeOnTv).length;
+
+    // Als we willen activeren en we zitten al aan 7, mag het niet
+    if (!highlight.activeOnTv && currentlyActiveCount >= 7) {
+      return; // Max 7 bereikt
+    }
+
+    highlight.activeOnTv = !highlight.activeOnTv;
+    onUpdate(newData);
   };
 
   const selectedItemsForVideo = getSelectedItems();
@@ -159,7 +178,8 @@ export default function Dashboard({ data, onUpdate }: { data: RestaurantData, on
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
     const name = formData.get('name') as string;
-    const price = parseFloat(formData.get('price') as string);
+    const priceRaw = formData.get('price') as string;
+    const price = parseFloat(priceRaw.replace(',', '.'));
     const description = formData.get('description') as string;
     const fileImage = (e.currentTarget.querySelector('input[type="file"]') as HTMLInputElement)?.files?.[0];
     const targetCategory = formData.get('category') as string;
@@ -257,14 +277,24 @@ export default function Dashboard({ data, onUpdate }: { data: RestaurantData, on
     setImagePreview(null);
   };
 
-  React.useEffect(() => {
-    if (videoGenerated && selectedItemsForVideo.length > 1) {
-      const interval = setInterval(() => {
-        setCurrentSlideIndex(prev => (prev + 1) % selectedItemsForVideo.length);
-      }, 3000);
-      return () => clearInterval(interval);
-    }
-  }, [videoGenerated, selectedItemsForVideo.length]);
+  const handleSaveBusinessSettings = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    const newData = {
+      ...data,
+      name: formData.get('name') as string,
+      tagline: formData.get('tagline') as string,
+      phone: formData.get('phone') as string,
+      email: formData.get('email') as string,
+      openingHours: {
+        weekdays: formData.get('weekdays') as string,
+        weekend: formData.get('weekend') as string,
+        sunday: formData.get('sunday') as string,
+      }
+    };
+    onUpdate(newData);
+    alert('Bedrijfsgegevens succesvol bijgewerkt!');
+  };
 
   const handleDownload = () => {
     const videoUrl = data.highlights[0].url;
@@ -590,7 +620,79 @@ export default function Dashboard({ data, onUpdate }: { data: RestaurantData, on
 
       case 'Videos':
         return (
-          <div className="space-y-8">
+          <div className="space-y-12">
+            <div className="bg-brand-gold/5 border border-brand-gold/20 rounded-[2rem] p-8">
+              <div className="flex justify-between items-center mb-6">
+                <div>
+                  <h3 className="text-2xl font-serif italic text-brand-gold">TV Modus Cinema Films</h3>
+                  <p className="text-white/40 text-sm">
+                    Selecteer maximaal 7 films. 
+                    <span className="ml-2 text-brand-gold font-bold">({data.highlights.filter(h => h.activeOnTv).length}/7 geselecteerd)</span>
+                  </p>
+                </div>
+                <div className="flex items-center gap-4">
+                  <button 
+                    onClick={() => {
+                      const videos = document.querySelectorAll('.cinema-preview-video');
+                      videos.forEach((v: any) => v.play().catch(() => {}));
+                    }}
+                    className="bg-white/5 hover:bg-white/10 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-widest border border-white/10 transition-colors hidden md:block"
+                  >
+                    Test Alle Video's
+                  </button>
+                  <Tv className="w-8 h-8 text-brand-gold" />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                {data.highlights.map((film) => (
+                  <div 
+                    key={film.id}
+                    onClick={() => toggleTvFilm(film.id)}
+                    className={`relative aspect-[9/16] rounded-3xl overflow-hidden cursor-pointer border-2 transition-all ${
+                      film.activeOnTv ? 'border-brand-gold shadow-lg shadow-brand-gold/20' : 'border-white/5 opacity-50'
+                    }`}
+                  >
+                    <video 
+                      src={film.url} 
+                      className="cinema-preview-video w-full h-full object-cover"
+                      muted
+                      preload="auto"
+                      crossOrigin="anonymous"
+                      onMouseOver={e => {
+                        e.currentTarget.play().catch(() => {});
+                      }}
+                      onMouseOut={e => {
+                        e.currentTarget.pause();
+                        e.currentTarget.currentTime = 0;
+                      }}
+                      onError={(e) => {
+                        e.currentTarget.style.display = 'none';
+                        const parent = e.currentTarget.parentElement;
+                        if (parent && !parent.querySelector('.video-error')) {
+                          const errorDiv = document.createElement('div');
+                          errorDiv.className = 'video-error absolute inset-0 flex items-center justify-center bg-red-500/20 text-red-500 text-[10px] font-bold p-2 text-center';
+                          errorDiv.innerText = 'Video link werkt niet';
+                          parent.appendChild(errorDiv);
+                        }
+                      }}
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex flex-col justify-end p-4 pointer-events-none">
+                      <div className="flex items-center gap-2 mb-1">
+                        <Play className="w-3 h-3 text-brand-gold" />
+                        <p className="text-[10px] font-bold uppercase tracking-widest text-white/60">Preview</p>
+                      </div>
+                      <p className="text-xs font-medium line-clamp-2 leading-tight">{film.title}</p>
+                    </div>
+                    {film.activeOnTv && (
+                      <div className="absolute top-3 right-3 w-8 h-8 bg-brand-gold rounded-full flex items-center justify-center shadow-lg">
+                        <CheckCircle2 className="w-5 h-5 text-brand-dark" />
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+
             <div className="flex justify-between items-end">
               <div>
                 <h2 className="text-4xl font-serif italic mb-2">Pro Video Creator</h2>
@@ -857,6 +959,69 @@ export default function Dashboard({ data, onUpdate }: { data: RestaurantData, on
           </div>
         );
 
+      case 'Instellingen':
+        return (
+          <div className="space-y-8 max-w-4xl">
+            <div className="flex justify-between items-center">
+              <h2 className="text-4xl font-serif italic">Bedrijfsinstellingen</h2>
+            </div>
+            
+            <div className="bg-[#1A1A1A] rounded-[2rem] border border-white/5 p-8">
+              <form onSubmit={handleSaveBusinessSettings} className="space-y-8">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  <div className="space-y-4">
+                    <h3 className="text-brand-gold font-serif italic text-xl">Algemene Informatie</h3>
+                    <div>
+                      <label className="text-xs text-white/40 uppercase tracking-widest mb-2 block">Restaurant Naam</label>
+                      <input name="name" defaultValue={data.name} required className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 focus:border-brand-gold outline-none transition-colors" />
+                    </div>
+                    <div>
+                      <label className="text-xs text-white/40 uppercase tracking-widest mb-2 block">Slogan / Tagline</label>
+                      <input name="tagline" defaultValue={data.tagline} required className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 focus:border-brand-gold outline-none transition-colors" />
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    <h3 className="text-brand-gold font-serif italic text-xl">Contactgegevens</h3>
+                    <div>
+                      <label className="text-xs text-white/40 uppercase tracking-widest mb-2 block">Telefoonnummer</label>
+                      <input name="phone" defaultValue={data.phone} required className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 focus:border-brand-gold outline-none transition-colors" />
+                    </div>
+                    <div>
+                      <label className="text-xs text-white/40 uppercase tracking-widest mb-2 block">E-mailadres</label>
+                      <input name="email" type="email" defaultValue={data.email} required className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 focus:border-brand-gold outline-none transition-colors" />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <h3 className="text-brand-gold font-serif italic text-xl">Openingsuren</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div>
+                      <label className="text-xs text-white/40 uppercase tracking-widest mb-2 block">Maandag - Donderdag</label>
+                      <input name="weekdays" defaultValue={data.openingHours.weekdays} required className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 focus:border-brand-gold outline-none transition-colors" />
+                    </div>
+                    <div>
+                      <label className="text-xs text-white/40 uppercase tracking-widest mb-2 block">Vrijdag - Zaterdag</label>
+                      <input name="weekend" defaultValue={data.openingHours.weekend} required className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 focus:border-brand-gold outline-none transition-colors" />
+                    </div>
+                    <div>
+                      <label className="text-xs text-white/40 uppercase tracking-widest mb-2 block">Zondag</label>
+                      <input name="sunday" defaultValue={data.openingHours.sunday} required className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 focus:border-brand-gold outline-none transition-colors" />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="pt-4">
+                  <button type="submit" className="w-full md:w-auto px-12 py-4 rounded-xl bg-brand-gold text-brand-dark font-bold hover:scale-105 transition-transform">
+                    Instellingen Opslaan
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        );
+
       default:
         return (
           <>
@@ -1053,7 +1218,16 @@ export default function Dashboard({ data, onUpdate }: { data: RestaurantData, on
                 <div className="grid grid-cols-1 gap-4">
                   <div>
                     <label className="text-xs text-white/40 uppercase tracking-widest mb-2 block">Prijs (€)</label>
-                    <input name="price" type="number" step="0.01" defaultValue={editingProduct?.item.price} required className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 focus:border-brand-gold outline-none transition-colors" />
+                    <input 
+                      name="price" 
+                      type="text" 
+                      inputMode="decimal"
+                      pattern="[0-9]*[.,]?[0-9]*"
+                      defaultValue={editingProduct?.item.price} 
+                      required 
+                      placeholder="bijv. 12.50"
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 focus:border-brand-gold outline-none transition-colors" 
+                    />
                   </div>
                 </div>
 

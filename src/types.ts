@@ -12,6 +12,7 @@ export interface VideoHighlight {
   id: string;
   url: string;
   title: string;
+  activeOnTv?: boolean;
 }
 
 export interface MenuSection {
@@ -22,8 +23,16 @@ export interface MenuSection {
 export interface RestaurantData {
   name: string;
   tagline: string;
+  phone: string;
+  email: string;
+  openingHours: {
+    weekdays: string;
+    weekend: string;
+    sunday: string;
+  };
   sections: MenuSection[];
   highlights: VideoHighlight[];
+  selectedTvHighlightIds?: string[];
   location: {
     address: string;
     lat: number;
