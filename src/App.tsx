@@ -21,11 +21,17 @@ export default function App() {
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
+        
+        // Validation: ensures sections exists and is an array
+        if (!parsed.sections || !Array.isArray(parsed.sections)) {
+          throw new Error("Invalid sections data in localStorage");
+        }
+
         // Force HTTPS on all highlights to prevent mixed-content blocks
         if (parsed.highlights) {
           parsed.highlights = parsed.highlights.map((h: any) => ({
             ...h,
-            url: h.url.replace('http://', 'https://')
+            url: h.url ? h.url.replace('http://', 'https://') : ''
           }));
         }
         return parsed;
@@ -48,13 +54,13 @@ export default function App() {
   const [highlightProduct, setHighlightProduct] = useState<any>(null);
 
   const SECTIONS_PER_PAGE = 4;
-  const totalMenuPages = Math.ceil(restaurantData.sections.length / SECTIONS_PER_PAGE);
+  const totalMenuPages = Math.ceil((restaurantData?.sections?.length || 0) / SECTIONS_PER_PAGE);
 
   // TV Mode Product Cycling
   useEffect(() => {
     if (view !== 'tv' || tvState !== 'film') return;
 
-    const allItems = restaurantData.sections.flatMap(s => s.items);
+    const allItems = restaurantData?.sections?.flatMap(s => s.items) || [];
     const cycleProduct = () => {
       const pool = allItems.length > 0 ? allItems : [];
       if (pool.length === 0) return;
@@ -198,15 +204,15 @@ export default function App() {
                 </div>
                 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 flex-1 overflow-y-auto md:overflow-hidden h-full pb-20 custom-scrollbar">
-                  {restaurantData.sections
+                  {(restaurantData?.sections || [])
                     .slice(menuPageIndex * SECTIONS_PER_PAGE, (menuPageIndex + 1) * SECTIONS_PER_PAGE)
-                    .map((section, sIdx) => (
+                    .map((section: any, sIdx: number) => (
                     <div key={sIdx} className="bg-white/5 p-5 rounded-[2rem] border border-white/5 flex flex-col h-full">
                       <h2 className="text-2xl font-display italic text-brand-gold border-b border-brand-gold/20 pb-2 mb-4 text-center">
                         {section.title}
                       </h2>
                       <div className="space-y-3 overflow-y-auto pr-1 custom-scrollbar flex-1">
-                        {section.items.map((item, iIdx) => (
+                        {(section.items || []).map((item: any, iIdx: number) => (
                           <div key={iIdx} className="flex justify-between items-start gap-2">
                             <div className="flex-1">
                               <h3 className="text-base font-medium text-white/90 leading-tight">
@@ -361,14 +367,14 @@ export default function App() {
       </AnimatePresence>
 
       <main className="max-w-7xl mx-auto px-6 py-24 mb-20 overflow-hidden">
-        {restaurantData.sections.map((section, index) => (
+        {(restaurantData?.sections || []).map((section: any, index: number) => (
           <MenuSection key={index} section={section} />
         ))}
       </main>
 
-      <VideoShowcase highlights={restaurantData.highlights} />
+      <VideoShowcase highlights={restaurantData?.highlights || []} />
       
-      <LocationMap address={restaurantData.location.address} />
+      <LocationMap address={restaurantData?.location?.address || ''} />
 
       <Footer data={restaurantData} />
     </div>

@@ -1,9 +1,21 @@
 import { GoogleGenAI } from "@google/genai";
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+let aiClient: any = null;
+
+function getAiClient() {
+  if (!aiClient) {
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      throw new Error("GEMINI_API_KEY is not configured. Please add it in the settings.");
+    }
+    aiClient = new GoogleGenAI({ apiKey });
+  }
+  return aiClient;
+}
 
 export async function generateProductImage(productName: string, description: string, restaurantName: string): Promise<string> {
   try {
+    const ai = getAiClient();
     const prompt = `Task: Create a professional, realistic, appetizing studio-lit food photograph of a "${productName}". 
     Details: ${description}. 
     Restaurant context: ${restaurantName}.

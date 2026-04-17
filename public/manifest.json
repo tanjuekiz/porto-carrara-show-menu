@@ -1,6 +1,6 @@
 {
-  "name": "Mission: Gastro Manager",
-  "short_name": "GastroMgr",
+  "name": "Porto Carrara Manager",
+  "short_name": "PortoMgr",
   "description": "Beheer je restaurant menu en TV schermen",
   "start_url": "/",
   "display": "standalone",

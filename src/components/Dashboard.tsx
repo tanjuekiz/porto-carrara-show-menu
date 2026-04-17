@@ -20,7 +20,10 @@ import {
   Upload,
   Settings,
   Sparkles,
-  Loader2
+  Loader2,
+  Globe,
+  FileText,
+  Code
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { RestaurantData, MenuItem, MenuSection } from '../types';
@@ -68,21 +71,23 @@ export default function Dashboard({ data, onUpdate }: { data: RestaurantData, on
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [selectedVideoItems, setSelectedVideoItems] = useState<string[]>([]);
   const [videoMode, setVideoMode] = useState<'single' | 'category' | 'custom'>('single');
-  const [selectedCategory, setSelectedCategory] = useState(data.sections[0]?.title || '');
+  const [selectedCategory, setSelectedCategory] = useState(data?.sections?.[0]?.title || '');
 
   const [editingProduct, setEditingProduct] = useState<{ item: MenuItem, sectionTitle: string } | null>(null);
   const [editingCategory, setEditingCategory] = useState<MenuSection | null>(null);
   const [isAddingProduct, setIsAddingProduct] = useState(false);
   const [isAddingCategory, setIsAddingCategory] = useState(false);
-  const [selectedTargetCategory, setSelectedTargetCategory] = useState(data.sections[0]?.title || '');
+  const [selectedTargetCategory, setSelectedTargetCategory] = useState(data?.sections?.[0]?.title || '');
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(data.logo || null);
   const [heroPreview, setHeroPreview] = useState<string | null>(data.heroImage || null);
   const [isGeneratingAiImage, setIsGeneratingAiImage] = useState(false);
   const [aiFormValues, setAiFormValues] = useState({ name: '', description: '' });
   const [importUrl, setImportUrl] = useState('');
+  const [importText, setImportText] = useState('');
   const [isImportingData, setIsImportingData] = useState(false);
   const [isSmartImporting, setIsSmartImporting] = useState(false);
+  const [isTextImporting, setIsTextImporting] = useState(false);
 
   useEffect(() => {
     const handler = (e: any) => {
@@ -143,7 +148,8 @@ export default function Dashboard({ data, onUpdate }: { data: RestaurantData, on
 
     setIsSmartImporting(true);
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
+      const apiKey = process.env.GEMINI_API_KEY;
+      const ai = new GoogleGenAI({ apiKey: apiKey! });
       
       const prompt = `Extract the full restaurant menu from this URL: ${importUrl}. 
       Return the menu structured exactly as a JSON object with a "sections" array. 
@@ -211,6 +217,88 @@ export default function Dashboard({ data, onUpdate }: { data: RestaurantData, on
       alert(`AI Import fout: ${error instanceof Error ? error.message : 'Kon de website niet lezen'}`);
     } finally {
       setIsSmartImporting(false);
+    }
+  };
+
+  const handleTextImport = async () => {
+    if (!importText || importText.trim().length < 10) {
+      alert('Plak a.u.b. de menu tekst of lijst met gerechten.');
+      return;
+    }
+
+    setIsTextImporting(true);
+    try {
+      const apiKey = process.env.GEMINI_API_KEY;
+      const ai = new GoogleGenAI({ apiKey: apiKey! });
+      
+      const prompt = `Convert the following unstructured restaurant menu text into a structured JSON:
+      
+      MENU TEXT:
+      ${importText}
+      
+      REQUIREMENTS:
+      Return a JSON object with a "sections" array. 
+      Each section MUST have a "title" (string) and "items" (array of objects).
+      Each item MUST have "id" (unique string), "name" (string), "price" (number), "description" (string), and "image" (string - use a placeholder from unsplash/picsum).
+      Format the response ONLY as valid JSON.`;
+
+      const response = await ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: prompt,
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              sections: {
+                type: Type.ARRAY,
+                items: {
+                  type: Type.OBJECT,
+                  properties: {
+                    title: { type: Type.STRING },
+                    items: {
+                      type: Type.ARRAY,
+                      items: {
+                        type: Type.OBJECT,
+                        properties: {
+                          id: { type: Type.STRING },
+                          name: { type: Type.STRING },
+                          price: { type: Type.NUMBER },
+                          description: { type: Type.STRING },
+                          image: { type: Type.STRING }
+                        },
+                        required: ["id", "name", "price", "description", "image"]
+                      }
+                    }
+                  },
+                  required: ["title", "items"]
+                }
+              }
+            },
+            required: ["sections"]
+          }
+        }
+      });
+
+      const importedData = JSON.parse(response.text);
+      
+      if (!importedData.sections || !Array.isArray(importedData.sections)) {
+        throw new Error('AI kon de tekst niet vertalen naar een menu.');
+      }
+
+      onUpdate({
+        ...data,
+        sections: importedData.sections
+      });
+      
+      alert('AI heeft je tekst succesvol omgezet naar een menu!');
+      setImportText('');
+      setActiveTab('Dashboard');
+    } catch (error) {
+      console.error('Text Import error:', error);
+      alert(`AI Tekst Import fout: ${error instanceof Error ? error.message : 'Kon de tekst niet verwerken'}`);
+    } finally {
+      setIsTextImporting(false);
     }
   };
 
@@ -328,12 +416,12 @@ export default function Dashboard({ data, onUpdate }: { data: RestaurantData, on
   const videoRef = React.useRef<HTMLVideoElement>(null);
 
   const getSelectedItems = () => {
-    const allItems = data.sections.flatMap(s => s.items);
+    const allItems = (data?.sections || []).flatMap(s => s.items || []);
     if (videoMode === 'single') {
       return allItems.filter(i => selectedVideoItems.includes(i.id));
     }
     if (videoMode === 'category') {
-      return data.sections.find(s => s.title === selectedCategory)?.items || [];
+      return (data?.sections || []).find(s => s.title === selectedCategory)?.items || [];
     }
     return allItems.filter(i => selectedVideoItems.includes(i.id));
   };
@@ -819,7 +907,7 @@ export default function Dashboard({ data, onUpdate }: { data: RestaurantData, on
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/5">
-                  {data.sections.flatMap(s => s.items.map(item => ({ ...item, category: s.title }))).map((item) => (
+                  {(data?.sections || []).flatMap(s => (s.items || []).map(item => ({ ...item, category: s.title }))).map((item) => (
                     <tr key={item.id} className="hover:bg-white/[0.02] transition-colors group">
                       <td className="px-8 py-4">
                         <div className="flex items-center gap-4">
@@ -1204,66 +1292,101 @@ export default function Dashboard({ data, onUpdate }: { data: RestaurantData, on
 
       case 'Import':
         return (
-          <div className="space-y-8 max-w-4xl">
-            <div className="bg-[#1A1A1A] rounded-[2rem] border border-white/5 p-8 md:p-12">
-              <div className="mb-12">
-                <h2 className="text-4xl font-display italic mb-4">Directe Menu Import</h2>
-                <p className="text-white/40 leading-relaxed">
-                  Importeer je volledige menu structuur direct vanaf een externe URL. 
-                  Zorg ervoor dat de data in het juiste JSON formaat staat.
-                </p>
-              </div>
+          <div className="space-y-8 max-w-4xl pb-24">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              {/* Website Import */}
+              <div className="bg-[#1A1A1A] rounded-[2rem] border border-white/5 p-8 flex flex-col h-full">
+                <div className="mb-8">
+                  <div className="w-12 h-12 bg-blue-500/10 rounded-2xl flex items-center justify-center mb-6 border border-blue-500/20">
+                    <Globe className="w-6 h-6 text-blue-500" />
+                  </div>
+                  <h2 className="text-3xl font-display italic mb-3">Website Import</h2>
+                  <p className="text-white/40 text-sm leading-relaxed">
+                    Geef de URL op van een website (bijv. TheFork of je eigen site) en de AI leest het menu uit.
+                  </p>
+                </div>
 
-              <div className="space-y-8">
-                <div className="space-y-4">
-                  <label className="text-xs text-white/40 uppercase tracking-widest block font-bold">Menu JSON URL</label>
-                  <div className="relative group">
+                <div className="space-y-6 mt-auto">
+                  <div className="space-y-3">
+                    <label className="text-[10px] text-white/40 uppercase tracking-widest block font-bold">Link naar website</label>
                     <input 
                       type="url"
                       value={importUrl}
                       onChange={(e) => setImportUrl(e.target.value)}
-                      placeholder="https://jouwserver.com/menu.json"
-                      className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-5 focus:border-brand-gold outline-none transition-all group-hover:border-white/20 text-lg"
+                      placeholder="https://www.thefork.nl/..."
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-4 focus:border-brand-gold outline-none transition-all text-sm"
                     />
-                    <div className="absolute inset-x-0 -bottom-px h-px bg-gradient-to-r from-transparent via-brand-gold/50 to-transparent scale-x-0 group-focus-within:scale-x-100 transition-transform duration-500" />
                   </div>
+
+                  <button 
+                    onClick={handleSmartImport}
+                    disabled={isSmartImporting || isTextImporting || isImportingData || !importUrl}
+                    className="w-full bg-brand-gold text-brand-dark py-4 rounded-xl font-bold flex items-center justify-center gap-3 hover:scale-[1.02] active:scale-[0.98] transition-all shadow-xl shadow-brand-gold/20 disabled:opacity-50"
+                  >
+                    {isSmartImporting ? <Loader2 className="w-5 h-5 animate-spin" /> : <Sparkles className="w-5 h-5" />}
+                    {isSmartImporting ? 'AI Leest Site...' : 'Lees Website'}
+                  </button>
+                </div>
+              </div>
+
+              {/* Text Import */}
+              <div className="bg-[#1A1A1A] rounded-[2rem] border border-white/5 p-8 flex flex-col h-full">
+                <div className="mb-8">
+                  <div className="w-12 h-12 bg-purple-500/10 rounded-2xl flex items-center justify-center mb-6 border border-purple-500/20">
+                    <FileText className="w-6 h-6 text-purple-500" />
+                  </div>
+                  <h2 className="text-3xl font-display italic mb-3">Tekst Import</h2>
+                  <p className="text-white/40 text-sm leading-relaxed">
+                    Plak hier de lijst met gerechten of een rommelige tekst. AI maakt er een perfect menu van.
+                  </p>
                 </div>
 
-                <div className="bg-brand-gold/5 border border-brand-gold/20 rounded-2xl p-6 space-y-3">
-                  <h4 className="text-sm font-bold uppercase tracking-widest text-brand-gold">Formaat Vereisten</h4>
-                  <ul className="text-xs text-white/60 space-y-2 list-disc list-inside">
-                    <li>JSON object met minimaal een <code className="text-brand-gold">sections</code> array.</li>
-                    <li>Secties moeten <code className="text-brand-gold">title</code> en <code className="text-brand-gold">items</code> bevatten.</li>
-                    <li>Items moeten afbeeldingen en prijzen bevatten voor een optimale weergave.</li>
-                  </ul>
-                </div>
+                <div className="space-y-6 mt-auto">
+                  <div className="space-y-3">
+                    <label className="text-[10px] text-white/40 uppercase tracking-widest block font-bold">Plak hier je tekst</label>
+                    <textarea 
+                      value={importText}
+                      onChange={(e) => setImportText(e.target.value)}
+                      placeholder="Bijv: Pizza Margherita 12.50, Pasta Carbonara 15.00..."
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-4 focus:border-brand-gold outline-none transition-all h-32 text-sm resize-none"
+                    />
+                  </div>
 
+                  <button 
+                    onClick={handleTextImport}
+                    disabled={isTextImporting || isSmartImporting || isImportingData || !importText}
+                    className="w-full bg-white/10 text-white py-4 rounded-xl font-bold flex items-center justify-center gap-3 hover:bg-white/20 transition-all disabled:opacity-50"
+                  >
+                    {isTextImporting ? <Loader2 className="w-5 h-5 animate-spin" /> : <Sparkles className="w-5 h-5" />}
+                    {isTextImporting ? 'AI Schrijft Menu...' : 'Zet Tekst Om'}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Advanced Developer Import */}
+            <div className="bg-[#1A1A1A] rounded-[2rem] border border-white/5 p-8">
+              <div className="flex items-center gap-4 mb-6">
+                <Code className="w-5 h-5 text-white/40" />
+                <h3 className="text-lg font-bold">Geavanceerd: JSON Import</h3>
+              </div>
+              <p className="text-white/40 text-sm mb-6">
+                Alleen voor ontwikkelaars. Importeer direct een JSON bestand vanaf een URL.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-4">
+                <input 
+                  type="url"
+                  value={importUrl}
+                  onChange={(e) => setImportUrl(e.target.value)}
+                  placeholder="https://server.com/menu.json"
+                  className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 focus:border-brand-gold outline-none transition-all text-sm"
+                />
                 <button 
                   onClick={handleUrlImport}
-                  disabled={isImportingData || isSmartImporting || !importUrl}
-                  className="w-full bg-white/5 text-white py-4 rounded-2xl font-bold text-sm flex items-center justify-center gap-3 border border-white/10 hover:bg-white/10 transition-all disabled:opacity-50"
+                  disabled={isImportingData || isSmartImporting || isTextImporting || !importUrl}
+                  className="bg-white/5 hover:bg-white/10 px-8 py-3 rounded-xl font-bold text-sm transition-all border border-white/10 disabled:opacity-50"
                 >
-                  {isImportingData ? <Loader2 className="w-5 h-5 animate-spin" /> : <Download className="w-5 h-5" />}
-                  Laden als Ruwe JSON Data
-                </button>
-
-                <div className="flex items-center gap-4 py-2 text-white/20">
-                  <div className="h-px flex-1 bg-white/10" />
-                  <span className="text-[10px] font-bold uppercase tracking-widest">Of gebruik AI Kracht</span>
-                  <div className="h-px flex-1 bg-white/10" />
-                </div>
-
-                <button 
-                  onClick={handleSmartImport}
-                  disabled={isImportingData || isSmartImporting || !importUrl}
-                  className="w-full bg-brand-gold text-brand-dark py-5 rounded-2xl font-bold text-lg flex items-center justify-center gap-3 hover:scale-[1.02] active:scale-[0.98] transition-all shadow-xl shadow-brand-gold/20 disabled:opacity-50 disabled:grayscale disabled:scale-100"
-                >
-                  {isSmartImporting ? (
-                    <Loader2 className="w-6 h-6 animate-spin" />
-                  ) : (
-                    <Sparkles className="w-6 h-6" />
-                  )}
-                  {isSmartImporting ? 'AI Leest Website...' : 'Smart AI Menu Import'}
+                  {isImportingData ? <Loader2 className="w-4 h-4 animate-spin" /> : 'JSON Laden'}
                 </button>
               </div>
             </div>
