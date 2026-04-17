@@ -15,12 +15,20 @@ import { motion, useScroll, useSpring, AnimatePresence } from 'motion/react';
 import { Settings, Eye, Tv, Monitor, Play, X } from 'lucide-react';
 
 export default function App() {
-  const [view, setView] = useState<'menu' | 'dashboard' | 'tv'>('dashboard');
+  const [view, setView] = useState<'menu' | 'dashboard' | 'tv'>('menu');
   const [restaurantData, setRestaurantData] = useState(() => {
     const saved = localStorage.getItem('mission_gastro_data');
     if (saved) {
       try {
-        return JSON.parse(saved);
+        const parsed = JSON.parse(saved);
+        // Force HTTPS on all highlights to prevent mixed-content blocks
+        if (parsed.highlights) {
+          parsed.highlights = parsed.highlights.map((h: any) => ({
+            ...h,
+            url: h.url.replace('http://', 'https://')
+          }));
+        }
+        return parsed;
       } catch (e) {
         console.error("Failed to parse saved data", e);
         return INITIAL_DATA;
@@ -67,10 +75,16 @@ export default function App() {
 
     if (tvState === 'film') {
       // Kies een willekeurige video uit de geselecteerde bioscoop films
-      const activeFilms = restaurantData.highlights.filter(h => h.activeOnTv);
-      const pool = activeFilms.length > 0 ? activeFilms : restaurantData.highlights;
-      const randomVideo = pool[Math.floor(Math.random() * pool.length)].url;
-      setCurrentFilmUrl(randomVideo);
+      const activeFilms = restaurantData.highlights?.filter(h => h.activeOnTv) || [];
+      const pool = activeFilms.length > 0 ? activeFilms : (restaurantData.highlights || []);
+      
+      if (pool.length > 0) {
+        const randomVideo = pool[Math.floor(Math.random() * pool.length)].url;
+        setCurrentFilmUrl(randomVideo);
+      } else {
+        // Fallback als er geen videos zijn
+        setCurrentFilmUrl("https://vjs.zencdn.net/v/oceans.mp4");
+      }
       
       // Forceer een duur van 18 seconden (tussen 15 en 20)
       timer = setTimeout(() => {
@@ -119,12 +133,15 @@ export default function App() {
                 muted
                 playsInline
                 preload="auto"
-                crossOrigin="anonymous"
                 className="w-full h-full object-cover"
-                onError={() => {
+                referrerPolicy="no-referrer"
+                onError={(e) => {
                   console.error("Video failed to load:", currentFilmUrl);
-                  setTvState('menu');
-                  setMenuPageIndex(0);
+                  // Als video faalt, probeer na 2 seconden een andere of ga naar menu
+                  setTimeout(() => {
+                    setTvState('menu');
+                    setMenuPageIndex(0);
+                  }, 2000);
                 }}
               />
               

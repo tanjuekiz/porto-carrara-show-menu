@@ -121,43 +121,43 @@ export const RESTAURANT_DATA: RestaurantData = {
   highlights: [
     {
       id: "mi1",
-      url: "https://assets.mixkit.co/videos/preview/mixkit-slow-motion-video-of-a-professional-chef-cooking-43845-large.mp4",
+      url: "https://vjs.zencdn.net/v/oceans.mp4",
       title: "The Chef's Mission - Keuken Infiltratie",
       activeOnTv: true
     },
     {
       id: "mi2",
-      url: "https://assets.mixkit.co/videos/preview/mixkit-pouring-red-wine-into-a-glass-10252-large.mp4",
+      url: "https://media.w3.org/2010/05/sintel/trailer.mp4",
       title: "Vintage Selection - Operatie Bordeaux",
       activeOnTv: true
     },
     {
       id: "mi3",
-      url: "https://assets.mixkit.co/videos/preview/mixkit-close-up-of-a-steak-on-the-grill-10254-large.mp4",
+      url: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4",
       title: "Grill Protocol - Heat Exposure",
       activeOnTv: true
     },
     {
       id: "mi4",
-      url: "https://assets.mixkit.co/videos/preview/mixkit-chef-preparing-a-salad-10257-large.mp4",
+      url: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4",
       title: "Precision Prep - De Groene Code",
       activeOnTv: true
     },
     {
       id: "mi5",
-      url: "https://assets.mixkit.co/videos/preview/mixkit-steam-coming-from-a-hot-dish-10260-large.mp4",
+      url: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4",
       title: "The Target - Steaming Revelation",
       activeOnTv: true
     },
     {
       id: "mi6",
-      url: "https://assets.mixkit.co/videos/preview/mixkit-burning-candle-and-a-plate-of-food-on-a-table-10261-large.mp4",
+      url: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4",
       title: "Safe house Atmosphere - Diner bij Kaarslicht",
       activeOnTv: true
     },
     {
       id: "mi7",
-      url: "https://assets.mixkit.co/videos/preview/mixkit-pouring-champagne-into-glasses-at-a-party-10246-large.mp4",
+      url: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerMeltdowns.mp4",
       title: "Mission Victory - Champagne Toast",
       activeOnTv: true
     }

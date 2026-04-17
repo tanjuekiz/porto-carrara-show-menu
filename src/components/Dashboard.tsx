@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   LayoutDashboard, 
   Grid2X2, 
@@ -25,6 +25,7 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { RestaurantData, MenuItem, MenuSection } from '../types';
 import { generateProductImage } from '../services/geminiService';
+import { GoogleGenAI, Type } from "@google/genai";
 
 interface StatCardProps {
   icon: React.ReactNode;
@@ -64,6 +65,7 @@ const ActionCard = ({ icon, title, description }: ActionCardProps) => (
 export default function Dashboard({ data, onUpdate }: { data: RestaurantData, onUpdate: (data: RestaurantData) => void }) {
   const [activeTab, setActiveTab] = useState('Dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [selectedVideoItems, setSelectedVideoItems] = useState<string[]>([]);
   const [videoMode, setVideoMode] = useState<'single' | 'category' | 'custom'>('single');
   const [selectedCategory, setSelectedCategory] = useState(data.sections[0]?.title || '');
@@ -78,6 +80,139 @@ export default function Dashboard({ data, onUpdate }: { data: RestaurantData, on
   const [heroPreview, setHeroPreview] = useState<string | null>(data.heroImage || null);
   const [isGeneratingAiImage, setIsGeneratingAiImage] = useState(false);
   const [aiFormValues, setAiFormValues] = useState({ name: '', description: '' });
+  const [importUrl, setImportUrl] = useState('');
+  const [isImportingData, setIsImportingData] = useState(false);
+  const [isSmartImporting, setIsSmartImporting] = useState(false);
+
+  useEffect(() => {
+    const handler = (e: any) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    };
+    window.addEventListener('beforeinstallprompt', handler);
+    return () => window.removeEventListener('beforeinstallprompt', handler);
+  }, []);
+
+  const handleInstallClick = async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    if (outcome === 'accepted') {
+      setDeferredPrompt(null);
+    }
+  };
+
+  const handleUrlImport = async () => {
+    if (!importUrl) {
+      alert('Voer een geldige URL in.');
+      return;
+    }
+
+    setIsImportingData(true);
+    try {
+      const response = await fetch(importUrl);
+      if (!response.ok) throw new Error('Kon data niet ophalen van URL');
+      const importedData = await response.json();
+
+      // Basic validation
+      if (!importedData.sections || !Array.isArray(importedData.sections)) {
+        throw new Error('Ongeldig menu formaat. "sections" array ontbreekt.');
+      }
+
+      onUpdate({
+        ...data,
+        ...importedData
+      });
+      
+      alert('Menu succesvol geïmporteerd!');
+      setImportUrl('');
+      setActiveTab('Dashboard');
+    } catch (error) {
+      console.error('Import error:', error);
+      alert(`Fout bij importeren: ${error instanceof Error ? error.message : 'Onbekende fout'}`);
+    } finally {
+      setIsImportingData(false);
+    }
+  };
+
+  const handleSmartImport = async () => {
+    if (!importUrl) {
+      alert('Voer een website URL in.');
+      return;
+    }
+
+    setIsSmartImporting(true);
+    try {
+      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
+      
+      const prompt = `Extract the full restaurant menu from this URL: ${importUrl}. 
+      Return the menu structured exactly as a JSON object with a "sections" array. 
+      Each section MUST have a "title" (string) and "items" (array of objects).
+      Each item MUST have "id" (unique string), "name" (string), "price" (number), "description" (string), and "image" (string - use a placeholder from picsum or similar if not found).
+      Focus on Voorgerechten, Hoofdgerechten, Desserts, and Drinks.
+      Return ONLY the valid JSON object.`;
+
+      const response = await ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: prompt,
+        config: {
+          tools: [{ urlContext: {} }],
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              sections: {
+                type: Type.ARRAY,
+                items: {
+                  type: Type.OBJECT,
+                  properties: {
+                    title: { type: Type.STRING },
+                    items: {
+                      type: Type.ARRAY,
+                      items: {
+                        type: Type.OBJECT,
+                        properties: {
+                          id: { type: Type.STRING },
+                          name: { type: Type.STRING },
+                          price: { type: Type.NUMBER },
+                          description: { type: Type.STRING },
+                          image: { type: Type.STRING }
+                        },
+                        required: ["id", "name", "price", "description", "image"]
+                      }
+                    }
+                  },
+                  required: ["title", "items"]
+                }
+              }
+            },
+            required: ["sections"]
+          }
+        }
+      });
+
+      const importedData = JSON.parse(response.text);
+      
+      if (!importedData.sections || !Array.isArray(importedData.sections)) {
+        throw new Error('De AI kon geen geldige menu-structuur vinden op deze pagina.');
+      }
+
+      // Merge with current data
+      onUpdate({
+        ...data,
+        sections: importedData.sections
+      });
+      
+      alert('AI heeft het menu succesvol van de website ' + importUrl + ' gelezen!');
+      setImportUrl('');
+      setActiveTab('Dashboard');
+    } catch (error) {
+      console.error('Smart Import error:', error);
+      alert(`AI Import fout: ${error instanceof Error ? error.message : 'Kon de website niet lezen'}`);
+    } finally {
+      setIsSmartImporting(false);
+    }
+  };
 
   const fileToBase64 = (file: File, maxWidth = 800, maxHeight = 800): Promise<string> => {
     return new Promise((resolve, reject) => {
@@ -173,6 +308,7 @@ export default function Dashboard({ data, onUpdate }: { data: RestaurantData, on
     { name: 'Dashboard', icon: <LayoutDashboard className="w-5 h-5" /> },
     { name: 'Categorieën', icon: <Grid2X2 className="w-5 h-5" /> },
     { name: 'Producten', icon: <ShoppingBag className="w-5 h-5" /> },
+    { name: 'Import', icon: <Upload className="w-5 h-5" /> },
     { name: 'Videos', icon: <Video className="w-5 h-5" /> },
     { name: 'Instellingen', icon: <Settings className="w-5 h-5" /> },
   ];
@@ -371,7 +507,11 @@ export default function Dashboard({ data, onUpdate }: { data: RestaurantData, on
         weekdays: formData.get('weekdays') as string,
         weekend: formData.get('weekend') as string,
         sunday: formData.get('sunday') as string,
-      }
+      },
+      highlights: data.highlights.map((h, i) => ({
+        ...h,
+        url: formData.get(`video_${i}`) as string || h.url
+      }))
     };
     onUpdate(newData);
     alert('Instellingen succesvol opgeslagen!');
@@ -1062,14 +1202,93 @@ export default function Dashboard({ data, onUpdate }: { data: RestaurantData, on
           </div>
         );
 
+      case 'Import':
+        return (
+          <div className="space-y-8 max-w-4xl">
+            <div className="bg-[#1A1A1A] rounded-[2rem] border border-white/5 p-8 md:p-12">
+              <div className="mb-12">
+                <h2 className="text-4xl font-display italic mb-4">Directe Menu Import</h2>
+                <p className="text-white/40 leading-relaxed">
+                  Importeer je volledige menu structuur direct vanaf een externe URL. 
+                  Zorg ervoor dat de data in het juiste JSON formaat staat.
+                </p>
+              </div>
+
+              <div className="space-y-8">
+                <div className="space-y-4">
+                  <label className="text-xs text-white/40 uppercase tracking-widest block font-bold">Menu JSON URL</label>
+                  <div className="relative group">
+                    <input 
+                      type="url"
+                      value={importUrl}
+                      onChange={(e) => setImportUrl(e.target.value)}
+                      placeholder="https://jouwserver.com/menu.json"
+                      className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-5 focus:border-brand-gold outline-none transition-all group-hover:border-white/20 text-lg"
+                    />
+                    <div className="absolute inset-x-0 -bottom-px h-px bg-gradient-to-r from-transparent via-brand-gold/50 to-transparent scale-x-0 group-focus-within:scale-x-100 transition-transform duration-500" />
+                  </div>
+                </div>
+
+                <div className="bg-brand-gold/5 border border-brand-gold/20 rounded-2xl p-6 space-y-3">
+                  <h4 className="text-sm font-bold uppercase tracking-widest text-brand-gold">Formaat Vereisten</h4>
+                  <ul className="text-xs text-white/60 space-y-2 list-disc list-inside">
+                    <li>JSON object met minimaal een <code className="text-brand-gold">sections</code> array.</li>
+                    <li>Secties moeten <code className="text-brand-gold">title</code> en <code className="text-brand-gold">items</code> bevatten.</li>
+                    <li>Items moeten afbeeldingen en prijzen bevatten voor een optimale weergave.</li>
+                  </ul>
+                </div>
+
+                <button 
+                  onClick={handleUrlImport}
+                  disabled={isImportingData || isSmartImporting || !importUrl}
+                  className="w-full bg-white/5 text-white py-4 rounded-2xl font-bold text-sm flex items-center justify-center gap-3 border border-white/10 hover:bg-white/10 transition-all disabled:opacity-50"
+                >
+                  {isImportingData ? <Loader2 className="w-5 h-5 animate-spin" /> : <Download className="w-5 h-5" />}
+                  Laden als Ruwe JSON Data
+                </button>
+
+                <div className="flex items-center gap-4 py-2 text-white/20">
+                  <div className="h-px flex-1 bg-white/10" />
+                  <span className="text-[10px] font-bold uppercase tracking-widest">Of gebruik AI Kracht</span>
+                  <div className="h-px flex-1 bg-white/10" />
+                </div>
+
+                <button 
+                  onClick={handleSmartImport}
+                  disabled={isImportingData || isSmartImporting || !importUrl}
+                  className="w-full bg-brand-gold text-brand-dark py-5 rounded-2xl font-bold text-lg flex items-center justify-center gap-3 hover:scale-[1.02] active:scale-[0.98] transition-all shadow-xl shadow-brand-gold/20 disabled:opacity-50 disabled:grayscale disabled:scale-100"
+                >
+                  {isSmartImporting ? (
+                    <Loader2 className="w-6 h-6 animate-spin" />
+                  ) : (
+                    <Sparkles className="w-6 h-6" />
+                  )}
+                  {isSmartImporting ? 'AI Leest Website...' : 'Smart AI Menu Import'}
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+
       case 'Instellingen':
         return (
           <div className="space-y-8 max-w-5xl pb-24">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
               <h2 className="text-3xl lg:text-4xl font-display italic">Website & Bedrijfsinstellingen</h2>
-              <div className="flex items-center gap-4 bg-white/5 px-4 md:px-6 py-2 md:py-3 rounded-2xl border border-white/10 w-full sm:w-auto justify-center sm:justify-start">
-                <span className={`w-3 h-3 rounded-full ${data.isSiteOpen ? 'bg-green-500 shadow-[0_0_15px_rgba(34,197,94,0.5)]' : 'bg-red-500 shadow-[0_0_15px_rgba(239,68,68,0.5)]'}`} />
-                <span className="text-sm font-bold uppercase tracking-widest">{data.isSiteOpen ? 'Website Live' : 'Website Gesloten'}</span>
+              <div className="flex flex-wrap items-center gap-4 w-full sm:w-auto">
+                {deferredPrompt && (
+                  <button 
+                    onClick={handleInstallClick}
+                    className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-brand-gold text-brand-dark px-6 py-3 rounded-2xl font-bold shadow-lg shadow-brand-gold/20"
+                  >
+                    <Download className="w-5 h-5" />
+                    Installeer App
+                  </button>
+                )}
+                <div className="flex-1 sm:flex-none flex items-center justify-center gap-4 bg-white/5 px-4 md:px-6 py-2 md:py-3 rounded-2xl border border-white/10">
+                  <span className={`w-3 h-3 rounded-full ${data.isSiteOpen ? 'bg-green-500 shadow-[0_0_15px_rgba(34,197,94,0.5)]' : 'bg-red-500 shadow-[0_0_15px_rgba(239,68,68,0.5)]'}`} />
+                  <span className="text-sm font-bold uppercase tracking-widest">{data.isSiteOpen ? 'Website Live' : 'Website Gesloten'}</span>
+                </div>
               </div>
             </div>
             
@@ -1187,6 +1406,24 @@ export default function Dashboard({ data, onUpdate }: { data: RestaurantData, on
                           <label className="text-xs text-white/40 uppercase tracking-widest mb-2 block">Zondag</label>
                           <input name="sunday" defaultValue={data.openingHours.sunday} required className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 focus:border-brand-gold outline-none transition-colors" />
                         </div>
+                      </div>
+                    </div>
+
+                    <div className="mt-8 space-y-4 pt-8 border-t border-white/5">
+                      <h3 className="text-brand-gold font-display italic text-xl">TV Cinema Video's</h3>
+                      <p className="text-white/40 text-xs mb-4">Hier kun je de directe links naar de 7 video's voor de TV-modus aanpassen.</p>
+                      <div className="grid grid-cols-1 gap-4">
+                        {data.highlights.map((highlight, index) => (
+                          <div key={highlight.id} className="space-y-2">
+                            <label className="text-[10px] text-white/40 uppercase tracking-widest block">Video {index + 1}: {highlight.title}</label>
+                            <input 
+                              name={`video_${index}`} 
+                              defaultValue={highlight.url} 
+                              placeholder="https://domein.com/video.mp4" 
+                              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 focus:border-brand-gold outline-none transition-colors text-xs font-mono" 
+                            />
+                          </div>
+                        ))}
                       </div>
                     </div>
                     

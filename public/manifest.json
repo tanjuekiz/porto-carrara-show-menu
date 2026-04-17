@@ -1,0 +1,21 @@
+{
+  "name": "Mission: Gastro Manager",
+  "short_name": "GastroMgr",
+  "description": "Beheer je restaurant menu en TV schermen",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0F0F0F",
+  "theme_color": "#D4AF37",
+  "icons": [
+    {
+      "src": "https://picsum.photos/seed/restaurant/192/192",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "https://picsum.photos/seed/restaurant/512/512",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
