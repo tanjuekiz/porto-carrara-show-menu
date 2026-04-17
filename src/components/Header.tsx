@@ -11,10 +11,10 @@ interface HeaderProps {
 
 export default function Header({ name, tagline, logo, heroImage, announcement }: HeaderProps) {
   return (
-    <header className="relative h-[70vh] flex items-center justify-center overflow-hidden bg-brand-dark text-brand-cream">
+    <header className="relative h-[40vh] md:h-[70vh] flex items-center justify-center overflow-hidden bg-brand-dark text-brand-cream">
       {/* Announcement Bar */}
       {announcement && (
-        <div className="absolute top-0 left-0 right-0 bg-brand-gold text-brand-dark py-3 px-4 z-50 text-center font-bold text-sm tracking-widest uppercase overflow-hidden">
+        <div className="absolute top-0 left-0 right-0 bg-brand-gold text-brand-dark py-3 pt-[calc(0.75rem+env(safe-area-inset-top))] px-4 z-50 text-center font-bold text-sm tracking-widest uppercase overflow-hidden">
           <motion.div
             animate={{ x: [-1000, 1000] }}
             transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
@@ -56,7 +56,7 @@ export default function Header({ name, tagline, logo, heroImage, announcement }:
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.2 }}
-          className="text-7xl md:text-9xl font-serif mb-4 tracking-tighter"
+          className="text-4xl sm:text-7xl md:text-9xl font-display mb-4 tracking-tighter"
         >
           {name}
         </motion.h1>

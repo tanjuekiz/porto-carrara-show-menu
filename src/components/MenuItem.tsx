@@ -13,7 +13,7 @@ export default function MenuItem({ item }: MenuItemProps) {
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true }}
       transition={{ duration: 0.5 }}
-      className="group relative flex flex-col md:flex-row gap-6 p-4 rounded-2xl transition-all hover:bg-white/50"
+      className="group relative flex flex-col md:flex-row gap-6 p-4 rounded-2xl transition-all hover:bg-white/5"
     >
       <div className="relative w-full md:w-32 h-48 md:h-32 overflow-hidden rounded-xl shrink-0">
         <img
@@ -26,15 +26,15 @@ export default function MenuItem({ item }: MenuItemProps) {
       
       <div className="flex flex-col justify-center flex-1">
         <div className="flex justify-between items-start mb-1">
-          <h3 className="text-xl font-medium text-brand-dark group-hover:text-brand-gold transition-colors">
+          <h3 className="text-xl font-medium text-white group-hover:text-brand-gold transition-colors">
             {item.name}
           </h3>
-          <span className="text-lg font-serif font-semibold text-brand-gold">
+          <span className="text-lg font-display font-semibold text-brand-gold">
             €{item.price.toFixed(2)}
           </span>
         </div>
         
-        <p className="text-brand-dark/60 text-sm leading-relaxed mb-3">
+        <p className="text-white/60 text-sm leading-relaxed mb-3">
           {item.description}
         </p>
         

@@ -33,12 +33,12 @@ interface StatCardProps {
 }
 
 const StatCard = ({ icon, label, value }: StatCardProps) => (
-  <div className="bg-[#1A1A1A] p-6 rounded-3xl border border-white/5 flex flex-col items-center justify-center text-center">
-    <div className="w-12 h-12 rounded-2xl bg-brand-gold/10 flex items-center justify-center mb-4 text-brand-gold">
+  <div className="bg-[#1A1A1A] p-4 md:p-6 rounded-3xl border border-white/5 flex flex-col items-center justify-center text-center">
+    <div className="w-10 h-10 md:w-12 md:h-12 rounded-2xl bg-brand-gold/10 flex items-center justify-center mb-4 text-brand-gold">
       {icon}
     </div>
-    <div className="text-3xl font-bold text-white mb-1">{value}</div>
-    <div className="text-white/40 text-sm uppercase tracking-wider">{label}</div>
+    <div className="text-2xl md:text-3xl font-bold text-white mb-1">{value}</div>
+    <div className="text-white/40 text-[10px] md:text-sm uppercase tracking-wider">{label}</div>
   </div>
 );
 
@@ -63,6 +63,7 @@ const ActionCard = ({ icon, title, description }: ActionCardProps) => (
 
 export default function Dashboard({ data, onUpdate }: { data: RestaurantData, onUpdate: (data: RestaurantData) => void }) {
   const [activeTab, setActiveTab] = useState('Dashboard');
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [selectedVideoItems, setSelectedVideoItems] = useState<string[]>([]);
   const [videoMode, setVideoMode] = useState<'single' | 'category' | 'custom'>('single');
   const [selectedCategory, setSelectedCategory] = useState(data.sections[0]?.title || '');
@@ -358,6 +359,10 @@ export default function Dashboard({ data, onUpdate }: { data: RestaurantData, on
       tagline: formData.get('tagline') as string,
       phone: formData.get('phone') as string,
       email: formData.get('email') as string,
+      location: {
+        ...data.location,
+        address: formData.get('address') as string
+      },
       isSiteOpen: formData.get('isSiteOpen') === 'on',
       activeAnnouncement: formData.get('activeAnnouncement') as string,
       logo: logoPreview || data.logo,
@@ -600,7 +605,7 @@ export default function Dashboard({ data, onUpdate }: { data: RestaurantData, on
         return (
           <div className="space-y-8">
             <div className="flex justify-between items-center">
-              <h2 className="text-4xl font-serif italic">Categorieën Beheren</h2>
+              <h2 className="text-4xl font-display italic">Categorieën Beheren</h2>
               <button 
                 onClick={() => setIsAddingCategory(true)}
                 className="bg-brand-gold text-brand-dark px-6 py-3 rounded-xl font-bold flex items-center gap-2 hover:scale-105 transition-transform"
@@ -638,7 +643,7 @@ export default function Dashboard({ data, onUpdate }: { data: RestaurantData, on
                       </button>
                     </div>
                     <div className="absolute bottom-6 left-6">
-                      <h3 className="text-3xl font-serif italic mb-1">{section.title}</h3>
+                      <h3 className="text-3xl font-display italic mb-1">{section.title}</h3>
                       <p className="text-white/40 text-sm">{section.items.length} Producten</p>
                     </div>
                   </div>
@@ -652,7 +657,7 @@ export default function Dashboard({ data, onUpdate }: { data: RestaurantData, on
         return (
           <div className="space-y-8">
             <div className="flex justify-between items-center">
-              <h2 className="text-4xl font-serif italic">Producten Beheren</h2>
+              <h2 className="text-4xl font-display italic">Producten Beheren</h2>
               <button 
                 onClick={() => {
                   setIsAddingProduct(true);
@@ -688,7 +693,7 @@ export default function Dashboard({ data, onUpdate }: { data: RestaurantData, on
                       <td className="px-8 py-4">
                         <span className="text-xs px-3 py-1 rounded-full bg-white/5 border border-white/10">{item.category}</span>
                       </td>
-                      <td className="px-8 py-4 font-serif text-brand-gold">€{item.price.toFixed(2)}</td>
+                      <td className="px-8 py-4 font-display text-brand-gold">€{item.price.toFixed(2)}</td>
                       <td className="px-8 py-4">
                         <div className="flex justify-end gap-2">
                           <button 
@@ -722,7 +727,7 @@ export default function Dashboard({ data, onUpdate }: { data: RestaurantData, on
             <div className="bg-brand-gold/5 border border-brand-gold/20 rounded-[2rem] p-8">
               <div className="flex justify-between items-center mb-6">
                 <div>
-                  <h3 className="text-2xl font-serif italic text-brand-gold">TV Modus Cinema Films</h3>
+                  <h3 className="text-2xl font-display italic text-brand-gold">TV Modus Cinema Films</h3>
                   <p className="text-white/40 text-sm">
                     Selecteer maximaal 7 films. 
                     <span className="ml-2 text-brand-gold font-bold">({data.highlights.filter(h => h.activeOnTv).length}/7 geselecteerd)</span>
@@ -793,7 +798,7 @@ export default function Dashboard({ data, onUpdate }: { data: RestaurantData, on
 
             <div className="flex justify-between items-end">
               <div>
-                <h2 className="text-4xl font-serif italic mb-2">Pro Video Creator</h2>
+                <h2 className="text-4xl font-display italic mb-2">Pro Video Creator</h2>
                 <p className="text-white/40">Selecteer wat je wilt promoten en klik op "Genereer Video".</p>
               </div>
               <div className="flex bg-white/5 p-1 rounded-2xl border border-white/10">
@@ -817,7 +822,7 @@ export default function Dashboard({ data, onUpdate }: { data: RestaurantData, on
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
               <div className="lg:col-span-7 space-y-8">
                 <div className="bg-[#1A1A1A] p-8 rounded-[2rem] border border-white/5">
-                  <h3 className="text-xl font-serif italic mb-6">Stap 1: Selectie</h3>
+                  <h3 className="text-xl font-display italic mb-6">Stap 1: Selectie</h3>
                   {videoMode === 'single' && (
                     <div className="grid grid-cols-2 gap-4">
                       {data.sections.flatMap(s => s.items).map(item => (
@@ -855,7 +860,7 @@ export default function Dashboard({ data, onUpdate }: { data: RestaurantData, on
                           <div className="flex items-center gap-6">
                             <img src={s.items[0]?.image || 'https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?auto=format&fit=crop&q=80&w=800'} className="w-16 h-16 rounded-2xl object-cover" />
                             <div>
-                              <h4 className="text-xl font-serif italic">{s.title}</h4>
+                              <h4 className="text-xl font-display italic">{s.title}</h4>
                               <p className="text-white/40 text-sm">{s.items.length} Producten</p>
                             </div>
                           </div>
@@ -891,7 +896,7 @@ export default function Dashboard({ data, onUpdate }: { data: RestaurantData, on
                   )}
 
                   <div className="mt-12">
-                    <h3 className="text-xl font-serif italic mb-6">Stap 2: Genereren</h3>
+                    <h3 className="text-xl font-display italic mb-6">Stap 2: Genereren</h3>
                     <button 
                       onClick={handleGenerateVideo}
                       disabled={isGenerating}
@@ -930,7 +935,7 @@ export default function Dashboard({ data, onUpdate }: { data: RestaurantData, on
                             animate={{ width: `${generationProgress}%` }}
                           />
                         </div>
-                        <p className="text-brand-gold font-serif italic text-xl mb-2">Video wordt gemaakt...</p>
+                        <p className="text-brand-gold font-display italic text-xl mb-2">Video wordt gemaakt...</p>
                         <p className="text-white/40 text-sm">AI optimaliseert beelden voor social media</p>
                       </div>
                     ) : videoGenerated ? (
@@ -981,7 +986,7 @@ export default function Dashboard({ data, onUpdate }: { data: RestaurantData, on
                               animate={{ opacity: 1, y: 0 }}
                               exit={{ opacity: 0, y: -20 }}
                             >
-                              <h4 className="text-4xl font-serif italic mb-2 text-white leading-tight">
+                              <h4 className="text-4xl font-display italic mb-2 text-white leading-tight">
                                 {selectedItemsForVideo[currentSlideIndex]?.name}
                               </h4>
                               <p className="text-brand-gold font-medium tracking-wide text-sm uppercase">
@@ -1008,7 +1013,7 @@ export default function Dashboard({ data, onUpdate }: { data: RestaurantData, on
                     ) : (
                       <div className="absolute inset-0 flex flex-col items-center justify-center p-12 text-center opacity-40">
                         <Video className="w-16 h-16 mb-6 text-white/20" />
-                        <p className="text-white/40 font-serif italic text-lg">Selecteer je producten en klik op de knop om de preview te genereren.</p>
+                        <p className="text-white/40 font-display italic text-lg">Selecteer je producten en klik op de knop om de preview te genereren.</p>
                       </div>
                     )}
                   </div>
@@ -1060,9 +1065,9 @@ export default function Dashboard({ data, onUpdate }: { data: RestaurantData, on
       case 'Instellingen':
         return (
           <div className="space-y-8 max-w-5xl pb-24">
-            <div className="flex justify-between items-center">
-              <h2 className="text-4xl font-serif italic">Website & Bedrijfsinstellingen</h2>
-              <div className="flex items-center gap-4 bg-white/5 px-6 py-3 rounded-2xl border border-white/10">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+              <h2 className="text-3xl lg:text-4xl font-display italic">Website & Bedrijfsinstellingen</h2>
+              <div className="flex items-center gap-4 bg-white/5 px-4 md:px-6 py-2 md:py-3 rounded-2xl border border-white/10 w-full sm:w-auto justify-center sm:justify-start">
                 <span className={`w-3 h-3 rounded-full ${data.isSiteOpen ? 'bg-green-500 shadow-[0_0_15px_rgba(34,197,94,0.5)]' : 'bg-red-500 shadow-[0_0_15px_rgba(239,68,68,0.5)]'}`} />
                 <span className="text-sm font-bold uppercase tracking-widest">{data.isSiteOpen ? 'Website Live' : 'Website Gesloten'}</span>
               </div>
@@ -1071,9 +1076,9 @@ export default function Dashboard({ data, onUpdate }: { data: RestaurantData, on
             <form onSubmit={handleSaveBusinessSettings} className="space-y-8">
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 {/* Kolom 1: Status & Identiteit */}
-                <div className="space-y-8">
-                  <div className="bg-[#1A1A1A] rounded-[2rem] border border-white/5 p-8 space-y-6">
-                    <h3 className="text-brand-gold font-serif italic text-xl">Website Status</h3>
+                <div className="space-y-6 md:space-y-8">
+                  <div className="bg-[#1A1A1A] rounded-[2rem] border border-white/5 p-5 md:p-8 space-y-6">
+                    <h3 className="text-brand-gold font-display italic text-xl">Website Status</h3>
                     
                     <div className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/5">
                       <div>
@@ -1098,8 +1103,8 @@ export default function Dashboard({ data, onUpdate }: { data: RestaurantData, on
                     </div>
                   </div>
 
-                  <div className="bg-[#1A1A1A] rounded-[2rem] border border-white/5 p-8 space-y-6">
-                    <h3 className="text-brand-gold font-serif italic text-xl">Identiteit</h3>
+                  <div className="bg-[#1A1A1A] rounded-[2rem] border border-white/5 p-5 md:p-8 space-y-6">
+                    <h3 className="text-brand-gold font-display italic text-xl">Identiteit</h3>
                     
                     <div className="space-y-4">
                       <p className="text-xs text-white/40 uppercase tracking-widest">Logo</p>
@@ -1119,36 +1124,40 @@ export default function Dashboard({ data, onUpdate }: { data: RestaurantData, on
                 </div>
 
                 {/* Kolom 2: Algemene Info & Hero */}
-                <div className="lg:col-span-2 space-y-8">
-                  <div className="bg-[#1A1A1A] rounded-[2rem] border border-white/5 p-8">
+                <div className="lg:col-span-2 space-y-6 md:space-y-8">
+                  <div className="bg-[#1A1A1A] rounded-[2rem] border border-white/5 p-5 md:p-8">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                       <div className="space-y-4">
-                        <h3 className="text-brand-gold font-serif italic text-xl">Algemene Informatie</h3>
+                        <h3 className="text-brand-gold font-display italic text-xl">Algemene Informatie</h3>
                         <div>
                           <label className="text-xs text-white/40 uppercase tracking-widest mb-2 block">Restaurant Naam</label>
-                          <input name="name" defaultValue={data.name} required className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 focus:border-brand-gold outline-none transition-colors" />
+                          <input name="name" defaultValue={data.name} required className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 focus:border-brand-gold outline-none transition-colors h-14" />
                         </div>
                         <div>
                           <label className="text-xs text-white/40 uppercase tracking-widest mb-2 block">Slogan / Tagline</label>
-                          <input name="tagline" defaultValue={data.tagline} required className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 focus:border-brand-gold outline-none transition-colors" />
+                          <input name="tagline" defaultValue={data.tagline} required className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 focus:border-brand-gold outline-none transition-colors h-14" />
                         </div>
                       </div>
 
                       <div className="space-y-4">
-                        <h3 className="text-brand-gold font-serif italic text-xl">Contact & Locatie</h3>
+                        <h3 className="text-brand-gold font-display italic text-xl">Contact & Locatie</h3>
                         <div>
                           <label className="text-xs text-white/40 uppercase tracking-widest mb-2 block">Telefoonnummer</label>
-                          <input name="phone" defaultValue={data.phone} required className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 focus:border-brand-gold outline-none transition-colors" />
+                          <input name="phone" defaultValue={data.phone} required className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 focus:border-brand-gold outline-none transition-colors h-14" />
                         </div>
                         <div>
                           <label className="text-xs text-white/40 uppercase tracking-widest mb-2 block">E-mailadres</label>
-                          <input name="email" type="email" defaultValue={data.email} required className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 focus:border-brand-gold outline-none transition-colors" />
+                          <input name="email" type="email" defaultValue={data.email} required className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 focus:border-brand-gold outline-none transition-colors h-14" />
+                        </div>
+                        <div>
+                          <label className="text-xs text-white/40 uppercase tracking-widest mb-2 block">Adres (België/Nederland)</label>
+                          <input name="address" defaultValue={data.location.address} required className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 focus:border-brand-gold outline-none transition-colors h-14" />
                         </div>
                       </div>
                     </div>
 
                     <div className="mt-8 space-y-4">
-                      <h3 className="text-brand-gold font-serif italic text-xl">Website Hero Afbeelding</h3>
+                      <h3 className="text-brand-gold font-display italic text-xl">Website Hero Afbeelding</h3>
                       <div className="w-full aspect-video bg-white/5 border border-white/10 rounded-3xl overflow-hidden relative group">
                         {heroPreview ? (
                           <img src={heroPreview} className="w-full h-full object-cover" />
@@ -1164,7 +1173,7 @@ export default function Dashboard({ data, onUpdate }: { data: RestaurantData, on
                     </div>
 
                     <div className="mt-8 space-y-4">
-                      <h3 className="text-brand-gold font-serif italic text-xl">Openingsuren</h3>
+                      <h3 className="text-brand-gold font-display italic text-xl">Openingsuren</h3>
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         <div>
                           <label className="text-xs text-white/40 uppercase tracking-widest mb-2 block">Ma - Do</label>
@@ -1232,7 +1241,7 @@ export default function Dashboard({ data, onUpdate }: { data: RestaurantData, on
                   <div className="w-10 h-10 rounded-full bg-brand-gold/20 flex items-center justify-center">
                     <TrendingUp className="w-5 h-5 text-brand-gold" />
                   </div>
-                  <h3 className="text-xl font-serif italic">Verkoop Tactieken</h3>
+                  <h3 className="text-xl font-display italic">Verkoop Tactieken</h3>
                 </div>
                 
                 <div className="space-y-6">
@@ -1272,17 +1281,39 @@ export default function Dashboard({ data, onUpdate }: { data: RestaurantData, on
   };
 
   return (
-    <div className="flex min-h-screen bg-[#0F0F0F] text-white font-sans">
-      <aside className="w-72 border-r border-white/5 p-8 flex flex-col">
-        <div className="mb-12">
-          <h1 className="text-2xl font-serif italic text-brand-gold">{data.name} Manager</h1>
+    <div className="flex min-h-screen bg-[#0F0F0F] text-white font-sans relative">
+      {/* Mobile Sidebar Overlay */}
+      <AnimatePresence>
+        {isSidebarOpen && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setIsSidebarOpen(false)}
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[90] lg:hidden"
+          />
+        )}
+      </AnimatePresence>
+
+      <aside className={`
+        fixed lg:static inset-y-0 left-0 z-[100] w-72 border-r border-white/5 p-8 flex flex-col bg-[#0F0F0F] transition-transform duration-300
+        ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+      `}>
+        <div className="flex items-center justify-between mb-12">
+          <h1 className="text-xl font-display italic text-brand-gold">{data.name} Manager</h1>
+          <button onClick={() => setIsSidebarOpen(false)} className="lg:hidden p-2 text-white/40">
+            <X className="w-6 h-6" />
+          </button>
         </div>
 
         <nav className="flex-1 space-y-2">
           {navItems.map((item) => (
             <button
               key={item.name}
-              onClick={() => setActiveTab(item.name)}
+              onClick={() => {
+                setActiveTab(item.name);
+                setIsSidebarOpen(false);
+              }}
               className={`w-full flex items-center gap-4 px-6 py-4 rounded-2xl transition-all ${
                 activeTab === item.name 
                 ? 'bg-brand-gold text-brand-dark font-semibold shadow-lg shadow-brand-gold/20' 
@@ -1308,13 +1339,21 @@ export default function Dashboard({ data, onUpdate }: { data: RestaurantData, on
         </div>
       </aside>
 
-      <main className="flex-1 p-12 overflow-y-auto">
-        <header className="flex justify-between items-center mb-12">
-          <div>
-            <h2 className="text-4xl font-serif mb-2 italic">{activeTab}</h2>
-            <p className="text-white/40">
-              {activeTab === 'Dashboard' ? 'Welkom bij jouw content studio.' : `Beheer je ${activeTab.toLowerCase()}.`}
-            </p>
+      <main className="flex-1 p-6 lg:p-12 overflow-y-auto w-full">
+        <header className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12">
+          <div className="flex items-center gap-4">
+            <button 
+              onClick={() => setIsSidebarOpen(true)}
+              className="lg:hidden p-3 rounded-xl bg-white/5 border border-white/10"
+            >
+              <LayoutDashboard className="w-6 h-6 text-brand-gold" />
+            </button>
+            <div>
+              <h2 className="text-3xl lg:text-4xl font-display mb-1 md:mb-2 italic">{activeTab}</h2>
+              <p className="text-white/40 text-xs md:text-sm">
+                {activeTab === 'Dashboard' ? 'Welkom bij jouw content studio.' : `Beheer je ${activeTab.toLowerCase()}.`}
+              </p>
+            </div>
           </div>
           
           <div className="flex items-center gap-6">
@@ -1350,9 +1389,9 @@ export default function Dashboard({ data, onUpdate }: { data: RestaurantData, on
                 }
               }}
               exit={{ opacity: 0, scale: 0.9 }}
-              className="bg-[#1A1A1A] border border-white/10 rounded-[2rem] p-8 w-full max-w-lg"
+              className="bg-[#1A1A1A] border border-white/10 rounded-[2rem] p-6 md:p-8 w-full max-w-lg max-h-[90vh] overflow-y-auto custom-scrollbar"
             >
-              <h3 className="text-2xl font-serif italic mb-6">
+              <h3 className="text-2xl font-display italic mb-6">
                 {editingProduct ? 'Product Bewerken' : 'Nieuw Product Toevoegen'}
               </h3>
               <form onSubmit={handleSaveProduct} className="space-y-4">
@@ -1476,9 +1515,9 @@ export default function Dashboard({ data, onUpdate }: { data: RestaurantData, on
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.9 }}
-              className="bg-[#1A1A1A] border border-white/10 rounded-[2rem] p-8 w-full max-w-lg"
+              className="bg-[#1A1A1A] border border-white/10 rounded-[2rem] p-6 md:p-8 w-full max-w-lg max-h-[90vh] overflow-y-auto custom-scrollbar"
             >
-              <h3 className="text-2xl font-serif italic mb-6">
+              <h3 className="text-2xl font-display italic mb-6">
                 {editingCategory ? 'Categorie Bewerken' : 'Nieuwe Categorie Toevoegen'}
               </h3>
               <form onSubmit={handleSaveCategory} className="space-y-4">
@@ -1536,7 +1575,7 @@ export default function Dashboard({ data, onUpdate }: { data: RestaurantData, on
             >
               <div className="flex justify-between items-center mb-8">
                 <div>
-                  <h3 className="text-3xl font-serif italic text-brand-gold">Fotogalerij</h3>
+                  <h3 className="text-3xl font-display italic text-brand-gold">Fotogalerij</h3>
                   <p className="text-white/40 text-sm">Kies een professionele sfeerfoto uit de map</p>
                 </div>
                 <button onClick={() => setShowStockGallery(false)} className="p-4 hover:bg-white/5 rounded-full transition-colors">
@@ -1584,7 +1623,7 @@ export default function Dashboard({ data, onUpdate }: { data: RestaurantData, on
               <div className="w-20 h-20 rounded-full bg-red-500/10 flex items-center justify-center text-red-500 mx-auto mb-6">
                 <Trash2 className="w-10 h-10" />
               </div>
-              <h3 className="text-2xl font-serif italic mb-4">Weet je het zeker?</h3>
+              <h3 className="text-2xl font-display mb-4">Weet je het zeker?</h3>
               <p className="text-white/60 mb-8">
                 {deleteConfirmation.type === 'product' 
                   ? 'Dit product wordt definitief verwijderd uit je menukaart.' 

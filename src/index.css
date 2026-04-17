@@ -1,23 +1,37 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Playfair+Display:ital,wght@0,400;0,700;1,400&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Space+Grotesk:wght@400;500;600;700&display=swap');
 @import "tailwindcss";
 
 @theme {
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
-  --font-serif: "Playfair Display", ui-serif, Georgia, serif;
+  --font-display: "Space Grotesk", sans-serif;
   
   --color-brand-gold: #C5A059;
-  --color-brand-dark: #121212;
+  --color-brand-dark: #0A0A0A;
   --color-brand-cream: #F9F7F2;
 }
 
 @layer base {
-  body {
-    @apply bg-brand-cream text-brand-dark font-sans antialiased;
-  }
+  html, body {
+  @apply bg-brand-dark;
+  background-color: #0A0A0A;
+}
+
+body {
+  @apply text-white font-sans antialiased overflow-x-hidden;
+  padding-bottom: env(safe-area-inset-bottom);
+}
   
   h1, h2, h3, h4 {
-    @apply font-serif;
+    @apply font-display font-bold uppercase tracking-tighter;
   }
+}
+
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.pt-safe {
+  padding-top: env(safe-area-inset-top);
 }
 
 .glass {

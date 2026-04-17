@@ -15,7 +15,7 @@ export default function VideoShowcase({ highlights }: VideoShowcaseProps) {
           viewport={{ once: true }}
           className="text-center mb-16"
         >
-          <h2 className="text-5xl md:text-7xl font-serif mb-4 italic">De Beleving</h2>
+          <h2 className="text-3xl md:text-7xl font-display mb-4 italic">De Beleving</h2>
           <p className="text-brand-gold uppercase tracking-[0.3em] text-sm">Sfeer & Passie</p>
         </motion.div>
 
@@ -39,7 +39,7 @@ export default function VideoShowcase({ highlights }: VideoShowcaseProps) {
               />
               <div className="absolute inset-0 bg-gradient-to-t from-brand-dark/80 via-transparent to-transparent" />
               <div className="absolute bottom-8 left-8">
-                <h3 className="text-2xl font-serif italic text-brand-gold">{video.title}</h3>
+                <h3 className="text-2xl font-display italic text-brand-gold">{video.title}</h3>
               </div>
             </motion.div>
           ))}

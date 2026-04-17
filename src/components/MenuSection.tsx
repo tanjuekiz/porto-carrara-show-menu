@@ -17,7 +17,7 @@ export default function MenuSection({ section }: MenuSectionProps) {
         transition={{ duration: 0.6 }}
         className="flex items-center gap-4 mb-10"
       >
-        <h2 className="text-4xl md:text-5xl font-serif text-brand-dark italic">
+        <h2 className="text-4xl md:text-5xl font-display text-white italic">
           {section.title}
         </h2>
         <div className="h-[1px] flex-1 bg-brand-gold/30" />

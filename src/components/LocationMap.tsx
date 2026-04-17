@@ -16,18 +16,18 @@ export default function LocationMap({ address }: LocationMapProps) {
             whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true }}
           >
-            <h2 className="text-5xl font-serif mb-6 italic">Vind Ons</h2>
-            <p className="text-brand-dark/60 text-lg mb-8 leading-relaxed">
+            <h2 className="text-3xl md:text-5xl font-display mb-6 italic">Vind Ons</h2>
+            <p className="text-white/60 text-lg mb-8 leading-relaxed">
               Gelegen in het hart van de stad, verwelkomen wij u in een sfeer van rust en culinaire verfijning. 
               Kom langs en ervaar de kunst van het tafelen.
             </p>
-            <div className="flex items-center gap-4 p-6 rounded-2xl bg-white shadow-sm border border-brand-gold/10">
+            <div className="flex items-center gap-4 p-6 rounded-2xl bg-white/5 border border-white/10">
               <div className="w-12 h-12 rounded-full bg-brand-gold/10 flex items-center justify-center">
                 <MapPin className="text-brand-gold w-6 h-6" />
               </div>
               <div>
-                <p className="font-semibold text-brand-dark">Adres</p>
-                <p className="text-brand-dark/60">{address}</p>
+                <p className="font-semibold text-white">Adres</p>
+                <p className="text-white/60">{address}</p>
               </div>
             </div>
           </motion.div>

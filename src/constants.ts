@@ -1,10 +1,10 @@
 import { RestaurantData } from './types';
 
 export const RESTAURANT_DATA: RestaurantData = {
-  name: "Porto Carrara",
-  tagline: "Culinaire revolutie op je bord",
+  name: "Mission: Gastro",
+  tagline: "Your Mission: Eat. Your Reward: Flavor.",
   phone: "+32 2 123 45 67",
-  email: "info@portocarrara.be",
+  email: "info@missiongastro.be",
   openingHours: {
     weekdays: "17:00 - 22:00",
     weekend: "17:00 - 23:00",
@@ -121,50 +121,50 @@ export const RESTAURANT_DATA: RestaurantData = {
   highlights: [
     {
       id: "mi1",
-      url: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4",
-      title: "Praag - Nachtelijke Infiltratie",
+      url: "https://assets.mixkit.co/videos/preview/mixkit-slow-motion-video-of-a-professional-chef-cooking-43845-large.mp4",
+      title: "The Chef's Mission - Keuken Infiltratie",
       activeOnTv: true
     },
     {
       id: "mi2",
-      url: "https://vjs.zencdn.net/v/oceans.mp4",
-      title: "CIA Vault - Operatie Langley",
+      url: "https://assets.mixkit.co/videos/preview/mixkit-pouring-red-wine-into-a-glass-10252-large.mp4",
+      title: "Vintage Selection - Operatie Bordeaux",
       activeOnTv: true
     },
     {
       id: "mi3",
-      url: "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4",
-      title: "Sevilla - De Motorfiets Achtervolging",
+      url: "https://assets.mixkit.co/videos/preview/mixkit-close-up-of-a-steak-on-the-grill-10254-large.mp4",
+      title: "Grill Protocol - Heat Exposure",
       activeOnTv: true
     },
     {
       id: "mi4",
-      url: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
-      title: "Shanghai - Wolkenkrabber Sprong",
+      url: "https://assets.mixkit.co/videos/preview/mixkit-chef-preparing-a-salad-10257-large.mp4",
+      title: "Precision Prep - De Groene Code",
       activeOnTv: true
     },
     {
       id: "mi5",
-      url: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4",
-      title: "Vaticaanstad - De Grote Ontsnapping",
+      url: "https://assets.mixkit.co/videos/preview/mixkit-steam-coming-from-a-hot-dish-10260-large.mp4",
+      title: "The Target - Steaming Revelation",
       activeOnTv: true
     },
     {
       id: "mi6",
-      url: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4",
-      title: "Burj Khalifa - Beklimming in Dubai",
+      url: "https://assets.mixkit.co/videos/preview/mixkit-burning-candle-and-a-plate-of-food-on-a-table-10261-large.mp4",
+      title: "Safe house Atmosphere - Diner bij Kaarslicht",
       activeOnTv: true
     },
     {
       id: "mi7",
-      url: "https://www.w3schools.com/html/mov_bbb.mp4",
-      title: "Kremlin - Operatie Moskou",
+      url: "https://assets.mixkit.co/videos/preview/mixkit-pouring-champagne-into-glasses-at-a-party-10246-large.mp4",
+      title: "Mission Victory - Champagne Toast",
       activeOnTv: true
     }
   ],
   selectedTvHighlightIds: ["mi1", "mi2", "mi3", "mi4", "mi5", "mi6", "mi7"],
   isSiteOpen: true,
-  activeAnnouncement: "Welkom bij Porto Carrara! Geniet vandaag van onze dagschotels.",
+  activeAnnouncement: "Welkom bij Mission: Gastro! Jouw culinaire missie begint hier.",
   heroImage: "https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?auto=format&fit=crop&q=80&w=2000",
   logo: "", 
   location: {
