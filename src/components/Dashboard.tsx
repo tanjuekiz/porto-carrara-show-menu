@@ -23,12 +23,17 @@ import {
   Loader2,
   Globe,
   FileText,
-  Code
+  Code,
+  RotateCcw,
+  Database,
+  History,
+  AlertTriangle
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { RestaurantData, MenuItem, MenuSection } from '../types';
 import { generateProductImage } from '../services/geminiService';
 import { GoogleGenAI, Type } from "@google/genai";
+import Papa from 'papaparse';
 
 interface StatCardProps {
   icon: React.ReactNode;
@@ -88,6 +93,12 @@ export default function Dashboard({ data, onUpdate }: { data: RestaurantData, on
   const [isImportingData, setIsImportingData] = useState(false);
   const [isSmartImporting, setIsSmartImporting] = useState(false);
   const [isTextImporting, setIsTextImporting] = useState(false);
+  const [isCsvImporting, setIsCsvImporting] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [backupSections, setBackupSections] = useState<MenuSection[] | null>(() => {
+    const saved = localStorage.getItem('menu_backup');
+    return saved ? JSON.parse(saved) : null;
+  });
 
   useEffect(() => {
     const handler = (e: any) => {
@@ -243,7 +254,7 @@ export default function Dashboard({ data, onUpdate }: { data: RestaurantData, on
       Format the response ONLY as valid JSON.`;
 
       const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
+        model: "gemini-1.5-flash",
         contents: prompt,
         config: {
           responseMimeType: "application/json",
@@ -300,6 +311,100 @@ export default function Dashboard({ data, onUpdate }: { data: RestaurantData, on
     } finally {
       setIsTextImporting(false);
     }
+  };
+
+  const handleCsvImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsCsvImporting(true);
+    Papa.parse(file, {
+      header: true,
+      skipEmptyLines: true,
+      complete: (results) => {
+        try {
+          const rows = results.data as any[];
+          const sectionsMap: { [key: string]: MenuItem[] } = {};
+
+          rows.forEach((row, index) => {
+            const category = row.category || row.Categorie || 'Overig';
+            const item: MenuItem = {
+              id: row.id || `csv-${index}-${Date.now()}`,
+              name: row.name || row.Naam || 'Naamloos Gerecht',
+              price: parseFloat(row.price || row.Prijs) || 0,
+              description: row.description || row.Beschrijving || '',
+              image: row.image || row.Afbeelding || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&q=80&w=800'
+            };
+
+            if (!sectionsMap[category]) {
+              sectionsMap[category] = [];
+            }
+            sectionsMap[category].push(item);
+          });
+
+          const sections: MenuSection[] = Object.keys(sectionsMap).map(title => ({
+            title,
+            items: sectionsMap[title]
+          }));
+
+          onUpdate({
+            ...data,
+            sections
+          });
+
+          alert(`CSV succesvol geïmporteerd! ${rows.length} gerechten toegevoegd.`);
+          setActiveTab('Dashboard');
+        } catch (error) {
+          console.error('CSV Parsing error:', error);
+          alert('Fout bij het verwerken van het CSV-bestand. Controleer de kolomnamen (category, name, price, description, image).');
+        } finally {
+          setIsCsvImporting(false);
+          e.target.value = '';
+        }
+      },
+      error: (error) => {
+        console.error('Papa Parse error:', error);
+        alert('Fout bij het lezen van het CSV-bestand.');
+        setIsCsvImporting(false);
+      }
+    });
+  };
+
+  const handleResetMenu = () => {
+    if (confirm('Weet je zeker dat je ALLE categorieën en producten wilt verwijderen? Dit kan niet ongedaan worden gemaakt, tenzij je een backup hebt.')) {
+      onUpdate({
+        ...data,
+        sections: []
+      });
+      alert('Menu is volledig leeggemaakt.');
+    }
+  };
+
+  const handleCreateBackup = () => {
+    localStorage.setItem('menu_backup', JSON.stringify(data.sections));
+    setBackupSections(data.sections);
+    alert('Backup succesvol opgeslagen in je browser!');
+  };
+
+  const handleRestoreBackup = () => {
+    if (!backupSections) return;
+    if (confirm('Weet je zeker dat je de backup wilt terugzetten? Je huidige (niet-opgeslagen) wijzigingen gaan verloren.')) {
+      onUpdate({
+        ...data,
+        sections: backupSections
+      });
+      alert('Backup succesvol teruggezet!');
+    }
+  };
+
+  const handleExportJson = () => {
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(data.sections, null, 2));
+    const downloadAnchorNode = document.createElement('a');
+    downloadAnchorNode.setAttribute("href",     dataStr);
+    downloadAnchorNode.setAttribute("download", `menu_backup_${new Date().toISOString().split('T')[0]}.json`);
+    document.body.appendChild(downloadAnchorNode);
+    downloadAnchorNode.click();
+    downloadAnchorNode.removeChild(downloadAnchorNode);
   };
 
   const fileToBase64 = (file: File, maxWidth = 800, maxHeight = 800): Promise<string> => {
@@ -596,9 +701,11 @@ export default function Dashboard({ data, onUpdate }: { data: RestaurantData, on
         weekend: formData.get('weekend') as string,
         sunday: formData.get('sunday') as string,
       },
-      highlights: data.highlights.map((h, i) => ({
-        ...h,
-        url: formData.get(`video_${i}`) as string || h.url
+      highlights: [...Array(7)].map((_, i) => ({
+        id: data.highlights[i]?.id || `highlight_${i}`,
+        title: data.highlights[i]?.title || `Video ${i + 1}`,
+        activeOnTv: true,
+        url: formData.get(`video_${i}`) as string || (data.highlights[i]?.url || '')
       }))
     };
     onUpdate(newData);
@@ -627,7 +734,7 @@ export default function Dashboard({ data, onUpdate }: { data: RestaurantData, on
     // Probeer directe download
     const link = document.createElement('a');
     link.href = videoUrl;
-    link.download = `LArtiste_Promo_${videoMode}.mp4`;
+    link.download = `${data.name.replace(/\s+/g, '_')}_Promo_${videoMode}.mp4`;
     link.target = '_blank';
     
     // Sommige browsers blokkeren directe download van externe domeinen
@@ -695,7 +802,8 @@ export default function Dashboard({ data, onUpdate }: { data: RestaurantData, on
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `LArtiste_Film_${new Date().getTime()}.webm`;
+      const nameSlug = data.name.replace(/\s+/g, '_');
+      link.download = `${nameSlug}_Film_${new Date().getTime()}.webm`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -772,7 +880,7 @@ export default function Dashboard({ data, onUpdate }: { data: RestaurantData, on
       ctx.fillStyle = '#D4AF37';
       ctx.font = 'italic 32px Georgia';
       ctx.textAlign = 'left';
-      ctx.fillText('L\'ARTISTE CULINAIRE', 80, 80);
+      ctx.fillText(data.name.toUpperCase(), 80, 80);
 
       if (currentItem) {
         // Product Naam
@@ -988,7 +1096,6 @@ export default function Dashboard({ data, onUpdate }: { data: RestaurantData, on
                       className="cinema-preview-video w-full h-full object-cover"
                       muted
                       preload="auto"
-                      crossOrigin="anonymous"
                       onMouseOver={e => {
                         e.currentTarget.play().catch(() => {});
                       }}
@@ -1218,7 +1325,7 @@ export default function Dashboard({ data, onUpdate }: { data: RestaurantData, on
                                 {selectedItemsForVideo[currentSlideIndex]?.name}
                               </h4>
                               <p className="text-brand-gold font-medium tracking-wide text-sm uppercase">
-                                Nu te bestellen bij L'Artiste
+                              Nu te bestellen bij {data.name}
                               </p>
                               <div className="mt-4 flex items-center gap-2">
                                 <div className="h-0.5 flex-1 bg-brand-gold/30 rounded-full overflow-hidden">
@@ -1329,6 +1436,38 @@ export default function Dashboard({ data, onUpdate }: { data: RestaurantData, on
                 </div>
               </div>
 
+              {/* CSV Import */}
+              <div className="bg-[#1A1A1A] rounded-[2rem] border border-white/5 p-8 flex flex-col h-full">
+                <div className="mb-8">
+                  <div className="w-12 h-12 bg-green-500/10 rounded-2xl flex items-center justify-center mb-6 border border-green-500/20">
+                    <FileText className="w-6 h-6 text-green-500" />
+                  </div>
+                  <h2 className="text-3xl font-display italic mb-3">CSV Upload</h2>
+                  <p className="text-white/40 text-sm leading-relaxed">
+                    Upload een CSV-bestand met kolommen: <code className="text-brand-gold">category, name, price, description, image</code>.
+                  </p>
+                </div>
+
+                <div className="space-y-6 mt-auto">
+                  <div className="relative">
+                    <input 
+                      type="file"
+                      accept=".csv"
+                      onChange={handleCsvImport}
+                      className="absolute inset-0 opacity-0 cursor-pointer z-10"
+                      disabled={isCsvImporting}
+                    />
+                    <div className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-4 flex items-center justify-center gap-3 text-sm text-white/60">
+                      {isCsvImporting ? <Loader2 className="w-5 h-5 animate-spin" /> : <Upload className="w-5 h-5" />}
+                      {isCsvImporting ? 'Verwerken...' : 'Selecteer CSV bestand'}
+                    </div>
+                  </div>
+                  <p className="text-[10px] text-white/20 text-center uppercase tracking-widest font-bold italic">Bestaande data wordt vervangen</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               {/* Text Import */}
               <div className="bg-[#1A1A1A] rounded-[2rem] border border-white/5 p-8 flex flex-col h-full">
                 <div className="mb-8">
@@ -1362,32 +1501,39 @@ export default function Dashboard({ data, onUpdate }: { data: RestaurantData, on
                   </button>
                 </div>
               </div>
-            </div>
 
-            {/* Advanced Developer Import */}
-            <div className="bg-[#1A1A1A] rounded-[2rem] border border-white/5 p-8">
-              <div className="flex items-center gap-4 mb-6">
-                <Code className="w-5 h-5 text-white/40" />
-                <h3 className="text-lg font-bold">Geavanceerd: JSON Import</h3>
-              </div>
-              <p className="text-white/40 text-sm mb-6">
-                Alleen voor ontwikkelaars. Importeer direct een JSON bestand vanaf een URL.
-              </p>
-              <div className="flex flex-col sm:flex-row gap-4">
-                <input 
-                  type="url"
-                  value={importUrl}
-                  onChange={(e) => setImportUrl(e.target.value)}
-                  placeholder="https://server.com/menu.json"
-                  className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 focus:border-brand-gold outline-none transition-all text-sm"
-                />
-                <button 
-                  onClick={handleUrlImport}
-                  disabled={isImportingData || isSmartImporting || isTextImporting || !importUrl}
-                  className="bg-white/5 hover:bg-white/10 px-8 py-3 rounded-xl font-bold text-sm transition-all border border-white/10 disabled:opacity-50"
-                >
-                  {isImportingData ? <Loader2 className="w-4 h-4 animate-spin" /> : 'JSON Laden'}
-                </button>
+              {/* Advanced Developer Import / JSON */}
+              <div className="bg-[#1A1A1A] rounded-[2rem] border border-white/5 p-8 flex flex-col h-full">
+                <div className="mb-8">
+                  <div className="w-12 h-12 bg-yellow-500/10 rounded-2xl flex items-center justify-center mb-6 border border-yellow-500/20">
+                    <Code className="w-6 h-6 text-yellow-500" />
+                  </div>
+                  <h2 className="text-3xl font-display italic mb-3">JSON URL Import</h2>
+                  <p className="text-white/40 text-sm leading-relaxed">
+                    Importeer direct een JSON bestand vanaf een URL. Formaat moet exact overeenkomen met de menu-structuur.
+                  </p>
+                </div>
+
+                <div className="space-y-6 mt-auto">
+                  <div className="space-y-3">
+                    <label className="text-[10px] text-white/40 uppercase tracking-widest block font-bold">Link naar JSON</label>
+                    <input 
+                      type="url"
+                      value={importUrl}
+                      onChange={(e) => setImportUrl(e.target.value)}
+                      placeholder="https://server.com/menu.json"
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-4 focus:border-brand-gold outline-none transition-all text-sm"
+                    />
+                  </div>
+
+                  <button 
+                    onClick={handleUrlImport}
+                    disabled={isImportingData || isSmartImporting || isTextImporting || !importUrl}
+                    className="w-full bg-white/5 hover:bg-white/10 text-white py-4 rounded-xl font-bold flex items-center justify-center gap-3 border border-white/10 transition-all disabled:opacity-50"
+                  >
+                    {isImportingData ? <Loader2 className="w-5 h-5 animate-spin" /> : 'JSON Laden'}
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -1533,20 +1679,23 @@ export default function Dashboard({ data, onUpdate }: { data: RestaurantData, on
                     </div>
 
                     <div className="mt-8 space-y-4 pt-8 border-t border-white/5">
-                      <h3 className="text-brand-gold font-display italic text-xl">TV Cinema Video's</h3>
+                      <h3 className="text-brand-gold font-display italic text-xl">TV Cinema Video's (7 stuks)</h3>
                       <p className="text-white/40 text-xs mb-4">Hier kun je de directe links naar de 7 video's voor de TV-modus aanpassen.</p>
                       <div className="grid grid-cols-1 gap-4">
-                        {data.highlights.map((highlight, index) => (
-                          <div key={highlight.id} className="space-y-2">
-                            <label className="text-[10px] text-white/40 uppercase tracking-widest block">Video {index + 1}: {highlight.title}</label>
-                            <input 
-                              name={`video_${index}`} 
-                              defaultValue={highlight.url} 
-                              placeholder="https://domein.com/video.mp4" 
-                              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 focus:border-brand-gold outline-none transition-colors text-xs font-mono" 
-                            />
-                          </div>
-                        ))}
+                        {[...Array(7)].map((_, index) => {
+                          const highlight = data.highlights[index] || { id: `new_${index}`, url: '', title: `Video ${index + 1}` };
+                          return (
+                            <div key={highlight.id || index} className="space-y-2">
+                              <label className="text-[10px] text-white/40 uppercase tracking-widest block">Video {index + 1}: {highlight.title}</label>
+                              <input 
+                                name={`video_${index}`} 
+                                defaultValue={highlight.url} 
+                                placeholder="https://domein.com/video.mp4" 
+                                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 focus:border-brand-gold outline-none transition-colors text-xs font-mono" 
+                              />
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
                     
@@ -1554,6 +1703,64 @@ export default function Dashboard({ data, onUpdate }: { data: RestaurantData, on
                       <button type="submit" className="w-full py-5 rounded-2xl bg-brand-gold text-brand-dark font-bold hover:scale-[1.02] active:scale-[0.98] transition-all shadow-xl shadow-brand-gold/10 text-lg">
                         Alle Wijzigingen Opslaan
                       </button>
+                    </div>
+
+                    {/* Data Management Section */}
+                    <div className="pt-12 border-t border-white/5 mt-12 space-y-6">
+                      <div className="flex items-center gap-3">
+                        <Database className="w-5 h-5 text-brand-gold" />
+                        <h3 className="text-brand-gold font-display italic text-xl">Data & Backup Beheer</h3>
+                      </div>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <button 
+                          type="button"
+                          onClick={handleCreateBackup}
+                          className="flex flex-col items-center justify-center p-6 bg-white/5 border border-white/10 rounded-[1.5rem] hover:bg-white/10 transition-all group"
+                        >
+                          <Database className="w-6 h-6 mb-3 text-blue-400 group-hover:scale-110 transition-transform" />
+                          <span className="text-sm font-bold">Maak Backup</span>
+                          <span className="text-[10px] text-white/40 mt-1">Slaat menu op in browser</span>
+                        </button>
+
+                        <button 
+                          type="button"
+                          onClick={handleRestoreBackup}
+                          disabled={!backupSections}
+                          className="flex flex-col items-center justify-center p-6 bg-white/5 border border-white/10 rounded-[1.5rem] hover:bg-white/10 transition-all group disabled:opacity-30 disabled:grayscale"
+                        >
+                          <History className="w-6 h-6 mb-3 text-green-400 group-hover:scale-110 transition-transform" />
+                          <span className="text-sm font-bold">Herstel Backup</span>
+                          <span className="text-[10px] text-white/40 mt-1">Zet laatste backup terug</span>
+                        </button>
+
+                        <button 
+                          type="button"
+                          onClick={handleExportJson}
+                          className="flex flex-col items-center justify-center p-6 bg-white/5 border border-white/10 rounded-[1.5rem] hover:bg-white/10 transition-all group"
+                        >
+                          <Download className="w-6 h-6 mb-3 text-purple-400 group-hover:scale-110 transition-transform" />
+                          <span className="text-sm font-bold">Exporteer JSON</span>
+                          <span className="text-[10px] text-white/40 mt-1">Download backup bestand</span>
+                        </button>
+
+                        <button 
+                          type="button"
+                          onClick={handleResetMenu}
+                          className="flex flex-col items-center justify-center p-6 bg-red-500/10 border border-red-500/20 rounded-[1.5rem] hover:bg-red-500/20 transition-all group"
+                        >
+                          <RotateCcw className="w-6 h-6 mb-3 text-red-500 group-hover:rotate-180 transition-transform duration-500" />
+                          <span className="text-sm font-bold text-red-500">Reset Menu</span>
+                          <span className="text-[10px] text-red-500/40 mt-1 italic">Verwijdert alles!</span>
+                        </button>
+                      </div>
+                      
+                      {!backupSections && (
+                        <div className="p-4 bg-blue-500/10 border border-blue-500/20 rounded-xl flex items-center gap-3">
+                          <AlertTriangle className="w-4 h-4 text-blue-400" />
+                          <p className="text-[10px] text-blue-400 uppercase tracking-widest font-bold">Tip: Maak een backup voordat je grote wijzigingen doet of data importeert.</p>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -1716,16 +1923,30 @@ export default function Dashboard({ data, onUpdate }: { data: RestaurantData, on
             </div>
           </div>
           
-          <div className="flex items-center gap-6">
-            <div className="relative">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
+          <div className="flex items-center gap-4">
+            <div className="relative group">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40 group-focus-within:text-brand-gold transition-colors" />
               <input 
                 type="text" 
-                placeholder="Zoeken..." 
-                className="bg-white/5 border border-white/10 rounded-xl py-2 pl-12 pr-4 text-sm focus:outline-none focus:border-brand-gold/50 transition-colors w-64"
+                placeholder="Gerechten zoeken..." 
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    // Logic for search could go here, for now it's visual
+                    console.log('Searching for:', searchQuery);
+                  }
+                }}
+                className="bg-white/5 border border-white/10 rounded-l-xl py-2.5 pl-12 pr-4 text-sm focus:outline-none focus:border-brand-gold/50 transition-all w-48 md:w-64"
               />
+              <button 
+                onClick={() => console.log('Searching for:', searchQuery)}
+                className="bg-brand-gold text-brand-dark px-4 py-2.5 rounded-r-xl font-bold text-xs uppercase tracking-widest hover:bg-white transition-colors"
+              >
+                Zoek
+              </button>
             </div>
-            <button className="p-2 rounded-xl bg-white/5 border border-white/10 text-white/60 hover:text-brand-gold transition-colors">
+            <button className="hidden sm:flex p-2.5 rounded-xl bg-white/5 border border-white/10 text-white/60 hover:text-brand-gold transition-colors">
               <Bell className="w-5 h-5" />
             </button>
           </div>

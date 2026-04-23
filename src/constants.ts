@@ -137,10 +137,15 @@ export const RESTAURANT_DATA: RestaurantData = {
     }
   ],
   highlights: [
-    { id: "mi1", url: "https://vjs.zencdn.net/v/oceans.mp4", title: "Authentieke Keuken", activeOnTv: true },
-    { id: "mi2", url: "https://media.w3.org/2010/05/sintel/trailer.mp4", title: "Onze Sfeer", activeOnTv: true }
+    { id: "final_v1", url: "https://www.w3schools.com/html/mov_bbb.mp4", title: "Kids: Big Buck Bunny", activeOnTv: true },
+    { id: "final_v2", url: "https://media.w3.org/2010/05/bunny/trailer.mp4", title: "Kids: Bunny Trailer", activeOnTv: true },
+    { id: "final_v3", url: "https://vjs.zencdn.net/v/oceans.mp4", title: "Kids/Nature: Ocean Wonders", activeOnTv: true },
+    { id: "final_v4", url: "https://media.w3.org/2010/05/sintel/trailer.mp4", title: "Action/Drama: Sintel Story", activeOnTv: true },
+    { id: "final_v5", url: "https://media.w3.org/2010/05/video/movie_300.mp4", title: "Action: Cinematic Sequence", activeOnTv: true },
+    { id: "final_v6", url: "https://www.w3schools.com/html/movie.mp4", title: "Drama: Nature's Peace", activeOnTv: true },
+    { id: "final_v7", url: "https://raw.githubusercontent.com/intel-iot-devkit/sample-videos/master/person-bicycle-car-detection.mp4", title: "Action: City Movement", activeOnTv: true }
   ],
-  selectedTvHighlightIds: ["mi1", "mi2"],
+  selectedTvHighlightIds: ["final_v1", "final_v2", "final_v3", "final_v4", "final_v5", "final_v6", "final_v7"],
   isSiteOpen: true,
   activeAnnouncement: "Welkom bij Porto Carrara! Onze nieuwe digitale menukaart is nu live.",
   heroImage: "https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&q=80&w=2000",
